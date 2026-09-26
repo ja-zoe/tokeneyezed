@@ -10,7 +10,8 @@ Document shape (master plan, "MongoDB data model"; docs/contracts.md):
 - `strategy_notes`: the goal's current strategy, set by the latest replan; "" before the first.
   next_open returns it on the Goal, and the brief shows it to the planner, so a replan actually
   changes the next attempt's plan.
-- `goal_id` is unique (data/indexes.py CLASSIC_INDEXES), so concurrent seeds can't duplicate a goal.
+- `goal_id` is unique (`REGULAR_INDEXES` in data/commands.py, created by `tokeneyezed db init`),
+  so concurrent seeds can't duplicate a goal.
 - A replan keeps the goal open and at its priority: the demo beat is the goal document changing in
   Atlas after a failure streak and the score improving on that goal afterward.
 - `seed` is idempotent: re-seeding (e.g. after a resume) never resets progress or notes.
