@@ -48,18 +48,40 @@ class FakeCollection:
         return FakeCursor(d for d in self.docs if matches(d))
 
     def find_one(self, query: dict[str, Any], projection: Any = None, sort: Any = None):
-        return next(iter(self.find(query)), None)
+        docs = list(self.find(query))
+        for key, direction in reversed(sort or []):  # stable sorts, last key first
+            present = [d for d in docs if _get(d, key) is not None]
+            missing = [d for d in docs if _get(d, key) is None]  # null sorts lowest, as in Mongo
+            present.sort(key=lambda d: _get(d, key), reverse=direction < 0)
+            docs = missing + present if direction > 0 else present + missing
+        return next(iter(docs), None)
 
     def aggregate(self, pipeline: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return []  # search stages need a real Atlas cluster
 
-    def update_one(self, query: dict[str, Any], update: dict[str, Any]):
+    def update_one(self, query: dict[str, Any], update: dict[str, Any], upsert: bool = False):
         for doc in self.find(query):
             doc.update(update.get("$set", {}))
+            for key, by in update.get("$inc", {}).items():
+                doc[key] = doc.get(key, 0) + by
             for key in update.get("$unset", {}):
                 doc.pop(key, None)
-            return SimpleNamespace(modified_count=1)
-        return SimpleNamespace(modified_count=0)
+            return SimpleNamespace(matched_count=1, modified_count=1, upserted_id=None)
+        if upsert:
+            doc = {k: v for k, v in query.items() if not isinstance(v, dict)}
+            doc.update(update.get("$setOnInsert", {}))
+            doc.update(update.get("$set", {}))
+            inserted = self.insert_one(doc).inserted_id
+            return SimpleNamespace(matched_count=0, modified_count=0, upserted_id=inserted)
+        return SimpleNamespace(matched_count=0, modified_count=0, upserted_id=None)
+
+
+def _get(doc: dict[str, Any], dotted: str) -> Any:
+    for part in dotted.split("."):
+        if not isinstance(doc, dict):
+            return None
+        doc = doc.get(part)
+    return doc
 
 
 class FakeDB(dict):

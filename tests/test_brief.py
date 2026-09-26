@@ -41,7 +41,7 @@ class FakeCollection:
     def __init__(self, name: str, log: list) -> None:
         self.name, self.log = name, log
 
-    def find_one(self, query: dict, projection: dict, sort: list) -> dict | None:
+    def find_one(self, query: dict, projection: dict, sort: list | None = None) -> dict | None:
         self.log.append((self.name, "find_one", query))
         self.log.append((self.name, "find_one_sort", sort))
         return {**ATTEMPT, "attempt_id": "a-best", "outcome": "improved"}
@@ -229,7 +229,8 @@ def test_brief_builder_port_puts_the_current_strategy_in_the_goal() -> None:
         goal_id="g", section="Tabs", target_val_pass=0.85, strategy_notes="Expand tabs first."
     )
     text = MongoBriefBuilder(db=FakeDB(), embedder=embedder()).build("H-1", goal, use_memory=True)
-    assert "- Tabs Current strategy: Expand tabs first." in text  # render joins lines
+    goal_section = text.split("## Goal")[1].split("##")[0]
+    assert "- Tabs\n- Current strategy (latest replan): Expand tabs first." in goal_section
     plain = Goal(goal_id="g", section="Tabs", target_val_pass=0.85)
     text = MongoBriefBuilder(db=FakeDB(), embedder=embedder()).build("H-1", plain, use_memory=True)
     assert "Current strategy" not in text
