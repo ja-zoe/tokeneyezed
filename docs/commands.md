@@ -59,7 +59,7 @@ Proven end to end on 2026-09-26 (real Claude, Codex, planner, scorer, observer, 
 
 **Once:** the split, written harness-side (it also writes the scorer's copy of visible there):
 
-    python -m tokeneyezed.eval.split --hidden-dir ~/tz/splits --visible-dest ~/tz/agent/visible.json
+    python -m tokeneyezed.eval.split --hidden-dir ~/tz/splits --visible-dest ~/tz/agent/visible.json --workspace ~/tz/agent
 
 **Per run** (`ws-b`, `ws-h`, `ws-hmem`): `tokeneyezed workspace init ~/tz/ws-h --visible ~/tz/agent/visible.json`
 
@@ -67,8 +67,8 @@ Proven end to end on 2026-09-26 (real Claude, Codex, planner, scorer, observer, 
 
 **Observers** (H and H-mem), each in its own pane, storing events in Atlas:
 
-    python -m tokeneyezed.observer.service --workspace ~/tz/ws-h --mongo --protect ~/tz/splits --port 8765
-    python -m tokeneyezed.observer.service --workspace ~/tz/ws-hmem --mongo --protect ~/tz/splits --port 8766
+    uv run --env-file .env python -m tokeneyezed.observer.service --workspace ~/tz/ws-h --mongo --protect ~/tz/splits --port 8765
+    uv run --env-file .env python -m tokeneyezed.observer.service --workspace ~/tz/ws-hmem --mongo --protect ~/tz/splits --port 8766
 
 **Runs**, each in its own pane:
 
