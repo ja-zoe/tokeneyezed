@@ -3,7 +3,7 @@
     tokeneyezed run --config configs/h.toml [--session-id ID] [--fake] [--checkpointer memory]
     tokeneyezed resume ID --config configs/h.toml [--agent AGENT]
     tokeneyezed status ID
-    tokeneyezed attempt --config configs/h.toml --intent "..." [--brief-file F]
+    tokeneyezed attempt --config configs/h.toml --intent "..." [--agent AGENT] [--brief-file F]
     tokeneyezed db init | check | backfill      (data/commands.py)
     tokeneyezed eval retrieval SESSION_ID       (data/commands.py)
 
@@ -112,10 +112,10 @@ def cmd_resume(args: argparse.Namespace) -> int:
 
 def cmd_attempt(args: argparse.Namespace) -> int:
     """One real attempt, nothing else: smoke-tests the runner and runs the honeypot beat."""
-    from tokeneyezed.controller.runners import claude_runner_from_env
+    from tokeneyezed.controller.runners import runner_for
 
     config = load_config(args.config)
-    runner = claude_runner_from_env(config)
+    runner = runner_for(args.agent or config.agent, config)
     brief = open(args.brief_file).read() if args.brief_file else ""
     session_id = args.session_id or f"attempt-{datetime.now(UTC):%m%d-%H%M%S}"
     attempt_id = f"{session_id}-001"
@@ -181,6 +181,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     attempt = sub.add_parser("attempt", help="run one real attempt with the real runner")
     attempt.add_argument("--config", required=True)
     attempt.add_argument("--intent", required=True)
+    attempt.add_argument("--agent", help="which agent runs it (default: the config's agent)")
     attempt.add_argument("--brief-file")
     attempt.add_argument("--session-id")
     attempt.set_defaults(func=cmd_attempt)

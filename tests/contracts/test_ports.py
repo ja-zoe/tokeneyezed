@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 from fake_claude import make_runner
+from fake_codex import make_codex_runner
 from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller import fakes
@@ -110,7 +111,11 @@ def claude_runner_on_fake_binary():
     return make_runner(Path(tempfile.mkdtemp()))
 
 
-RUNNERS = [fakes.FakeRunner, claude_runner_on_fake_binary]
+def codex_runner_on_fake_binary():
+    return make_codex_runner(Path(tempfile.mkdtemp()))
+
+
+RUNNERS = [fakes.FakeRunner, claude_runner_on_fake_binary, codex_runner_on_fake_binary]
 SCORERS = [fakes.ScriptedScorer]
 REVIEWERS = [fakes.FakeReviewer, GamingReviewer]
 
