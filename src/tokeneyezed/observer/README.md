@@ -1,8 +1,20 @@
 # Observer: first integration slice
 
 Implemented: contract-shaped events, Claude/Codex payload adapters, deterministic pre-gate,
-authenticated loopback HTTP endpoint, event-writer injection, and outage backfill.
-No new dependencies. Post/stop events are logged and allowed for now.
+attempt-scoped post-checks, authenticated loopback HTTP endpoint, event-writer injection, and
+outage backfill. No new dependencies. Stop events are logged and allowed.
+
+## Post-tool checks
+
+`PostToolUse` events can return corrective notes for clear, deterministic patterns: an edit outside
+the file paths named in `TOKENEYEZED_INTENT` (or into an explicitly excluded path), the same failed
+tool input repeated twice in one attempt, or eight consecutive post-tool calls without a successful
+edit or test run. Test output and structured nonzero exit codes are used to recognize failures.
+Intent is sent to the loopback service in a bounded, URL-safe header and is not added to the stored
+event contract. State is held in memory per attempt and cleared on `Stop` or service restart. These
+are conservative heuristics: semantic intent drift and similarity to failures in earlier attempts
+are not evaluated. Codex receives its native post-hook feedback decision, which replaces the
+completed tool result for the model but does not undo the tool's side effects.
 
 ## Runner integration
 
@@ -16,6 +28,7 @@ Set `TOKENEYEZED_OBSERVER_TOKEN` to the same nonempty value in the service and
 hook environment. The runner also supplies:
 
 - `TOKENEYEZED_SESSION_ID` and `TOKENEYEZED_ATTEMPT_ID`: harness identity, not native agent IDs.
+- `TOKENEYEZED_INTENT`: the declared attempt scope used by post-hook file checks.
 - `TOKENEYEZED_OBSERVER_URL`: `http://127.0.0.1:8765/event`.
 - `TOKENEYEZED_OBSERVER_SPOOL`: absolute writable JSONL path outside the task workspace.
 
@@ -77,7 +90,7 @@ the recorded tool calls. Pass each protected harness path with `--protect`.
 Baseline capture must produce this same neutral JSONL shape; the baseline runner
 does not install the blocking observer.
 
-Still to build: post-checks, source-based gaming review, and real-agent smoke tests. The
+Still to build: source-based gaming review and real-agent smoke tests. The
 shared contracts remain draft; this module does not change them.
 
 ## Learned rules
