@@ -2,6 +2,7 @@
 
 import urllib.error
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -35,13 +36,26 @@ class FakeCollection:
         return FakeResult(doc["_id"])
 
     def find(self, query: dict[str, Any]) -> FakeCursor:
-        return FakeCursor(d for d in self.docs if all(d.get(k) == v for k, v in query.items()))
+        def matches(doc):
+            for key, value in query.items():
+                if isinstance(value, dict):
+                    if "$ne" in value and doc.get(key) == value["$ne"]:
+                        return False
+                    if "$exists" in value and (key in doc) != value["$exists"]:
+                        return False
+                elif doc.get(key) != value:
+                    return False
+            return True
 
-    def update_one(self, query: dict[str, Any], update: dict[str, Any]) -> None:
+        return FakeCursor(d for d in self.docs if matches(d))
+
+    def update_one(self, query: dict[str, Any], update: dict[str, Any]):
         for doc in self.find(query):
             doc.update(update.get("$set", {}))
             for key in update.get("$unset", {}):
                 doc.pop(key, None)
+            return SimpleNamespace(modified_count=1)
+        return SimpleNamespace(modified_count=0)
 
 
 class FakeDB(dict):
@@ -198,3 +212,49 @@ def test_backfill_embeds_only_the_queue() -> None:
     by_id = {d["attempt_id"]: d for d in db["attempts"].docs}
     assert len(by_id["a-1"]["embedding"]) == DIMENSION and "needs_embedding" not in by_id["a-1"]
     assert "embedding" not in by_id["a-3"]
+
+
+@pytest.mark.parametrize("limit", [0, -1, True, 1.5])
+def test_backfill_rejects_unbounded_or_invalid_limit(limit) -> None:
+    with pytest.raises(ValueError):
+        backfill_embeddings(limit=limit, db=FakeDB(), embedder=embedder())
+
+
+def test_backfill_skips_a_queued_attempt_flagged_after_write(monkeypatch) -> None:
+    db = FakeDB()
+    write_attempt(**ATTEMPT, db=db, embedder=embedder(fail=True))
+    doc = db["attempts"].docs[0]
+    doc["outcome"] = FLAGGED_OUTCOME
+    emb = embedder()
+
+    def forbidden(text):
+        pytest.fail("flagged attempts must not reach the embedding API")
+
+    monkeypatch.setattr(emb, "embed_document_or_none", forbidden)
+    assert backfill_embeddings(db=db, embedder=emb) == 0
+    assert "embedding" not in doc
+
+
+def test_backfill_rechecks_flag_before_storing_vector(monkeypatch) -> None:
+    db = FakeDB()
+    write_attempt(**ATTEMPT, db=db, embedder=embedder(fail=True))
+    doc = db["attempts"].docs[0]
+    emb = embedder()
+
+    def flag_during_embedding(text):
+        doc["outcome"] = FLAGGED_OUTCOME
+        return [0.1] * DIMENSION
+
+    monkeypatch.setattr(emb, "embed_document_or_none", flag_during_embedding)
+    assert backfill_embeddings(db=db, embedder=emb) == 0
+    assert "embedding" not in doc
+
+
+def test_backfill_does_not_overwrite_an_existing_embedding() -> None:
+    db = FakeDB()
+    write_attempt(**ATTEMPT, db=db, embedder=embedder())
+    doc = db["attempts"].docs[0]
+    doc["needs_embedding"] = True
+    original = doc["embedding"]
+    assert backfill_embeddings(db=db, embedder=embedder()) == 0
+    assert doc["embedding"] is original
