@@ -186,8 +186,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.mode == "attempt":
         if not (args.visible and args.validation):
             ap.error("attempt mode needs --visible and --validation")
-        out = score_attempt(args.visible, args.validation, args.workspace, args.program,
-                            args.timeout, args.jobs)
+        out = score_attempt(
+            args.visible, args.validation, args.workspace, args.program, args.timeout, args.jobs
+        )
     elif args.mode == "heldout":
         if not args.heldout:
             ap.error("heldout mode needs --heldout")

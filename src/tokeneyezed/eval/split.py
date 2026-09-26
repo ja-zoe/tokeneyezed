@@ -144,8 +144,9 @@ def write_splits(
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse args, produce the three split files and a manifest, print a summary."""
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--spec", type=Path, default=DEFAULT_SPEC,
-                    help="path to the official spec.json")
+    ap.add_argument(
+        "--spec", type=Path, default=DEFAULT_SPEC, help="path to the official spec.json"
+    )
     ap.add_argument(
         "--hidden-dir",
         type=Path,
@@ -162,8 +163,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--spec-version", default="0.31.2")
     args = ap.parse_args(argv)
 
-    manifest = write_splits(args.spec, args.hidden_dir, args.visible_dest, args.seed,
-                            args.spec_version)
+    manifest = write_splits(
+        args.spec, args.hidden_dir, args.visible_dest, args.seed, args.spec_version
+    )
     total = sum(manifest["counts"].values())
     print(f"split {total} examples (seed {args.seed}):")
     for s, n in manifest["counts"].items():
