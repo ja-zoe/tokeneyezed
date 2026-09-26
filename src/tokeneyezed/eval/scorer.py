@@ -73,7 +73,7 @@ def renderer_env(home: str) -> dict[str, str]:
     Voyage keys — must never reach agent-written code.
     """
     return {
-        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+        "PATH": os.environ.get("PATH") or "/usr/local/bin:/usr/bin:/bin",
         "LANG": "C.UTF-8",
         "LC_ALL": "C.UTF-8",
         "HOME": home,

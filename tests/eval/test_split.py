@@ -23,6 +23,7 @@ def run_split(tmp_path: Path) -> tuple[Path, Path]:
     """Run the real CLI against the bundled spec; return (hidden_dir, visible_dest)."""
     hidden = tmp_path / "harness" / "splits"
     visible = tmp_path / "workspace" / "tests" / "visible.json"
+    (tmp_path / "workspace" / ".git").mkdir(parents=True)  # task workspaces are git repos
     assert main(["--hidden-dir", str(hidden), "--visible-dest", str(visible)]) == 0
     return hidden, visible
 
@@ -97,18 +98,33 @@ def test_different_seed_changes_membership_not_counts() -> None:
 
 def test_i1_guard_hidden_dir_under_workspace(tmp_path: Path) -> None:
     """Refuses a hidden dir nested inside the task workspace (invariant I1)."""
+    (tmp_path / "workspace" / ".git").mkdir(parents=True)
     visible = tmp_path / "workspace" / "tests" / "visible.json"
     hidden = tmp_path / "workspace" / "tests" / "splits"
-    with pytest.raises(SystemExit, match="invariant I1"):
+    with pytest.raises(SystemExit, match="reachable.*invariant I1"):
         main(["--hidden-dir", str(hidden), "--visible-dest", str(visible)])
 
 
 def test_i1_guard_workspace_under_hidden_dir(tmp_path: Path) -> None:
     """Refuses a workspace nested inside the hidden dir (invariant I1, other way)."""
     hidden = tmp_path / "splits"
-    visible = tmp_path / "splits" / "deeper" / "workspace" / "visible.json"
-    with pytest.raises(SystemExit, match="invariant I1"):
+    ws = tmp_path / "splits" / "deeper" / "workspace"
+    visible = ws / "visible.json"
+    with pytest.raises(SystemExit, match="reachable.*invariant I1"):
+        main(["--hidden-dir", str(hidden), "--visible-dest", str(visible), "--workspace", str(ws)])
+
+
+def test_refuses_when_workspace_root_is_unknowable(tmp_path: Path) -> None:
+    """No --workspace and no git root: refuse rather than guess how far ws reaches.
+
+    Guessing visible_dest's parent let ws/tests/visible.json + ws/hidden through
+    (PR #16 review finding 1; gpt-5.6-sol review round confirmed the residual hole).
+    """
+    visible = tmp_path / "ws" / "tests" / "visible.json"
+    hidden = tmp_path / "ws" / "hidden"
+    with pytest.raises(SystemExit, match="cannot determine.*invariant I1"):
         main(["--hidden-dir", str(hidden), "--visible-dest", str(visible)])
+    assert not hidden.exists()
 
 
 def test_i1_guard_documented_layout_via_git_root(tmp_path: Path) -> None:

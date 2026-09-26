@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import random
 from collections import defaultdict
 from collections.abc import Sequence
@@ -102,15 +103,31 @@ def workspace_root(visible_dest: Path, workspace: Path | None) -> Path:
     """The task workspace root the I1 guard protects.
 
     Explicit --workspace wins; otherwise the git root containing visible_dest
-    (the task workspace is a git repo), falling back to its directory. The
-    fallback alone would miss layouts like ws/tests/visible.json + ws/hidden.
+    (the task workspace is always a git repo). With neither there is no way to
+    know how far up the workspace reaches, so guessing (e.g. visible_dest's
+    parent) would let hidden splits land inside it — refuse instead.
     """
     if workspace is not None:
         return workspace.resolve()
     for parent in visible_dest.parents:
         if (parent / ".git").exists():
             return parent
-    return visible_dest.parent
+    raise SystemExit(
+        f"refusing: cannot determine the task workspace root — {visible_dest} is not "
+        "inside a git repo; pass --workspace (invariant I1)"
+    )
+
+
+def write_json(path: Path, text: str) -> None:
+    """Write text to path atomically, never following a pre-planted symlink.
+
+    A plain write_text() follows an existing symlink at path, which could
+    redirect a hidden split into the task workspace. Writing a same-directory
+    temp file and os.replace()-ing it swaps out any such symlink instead.
+    """
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
 
 
 def write_splits(
@@ -152,12 +169,12 @@ def write_splits(
     hidden_dir.mkdir(parents=True, exist_ok=True)
     visible_dest.parent.mkdir(parents=True, exist_ok=True)
     visible_json = json.dumps(splits["visible"], indent=1) + "\n"
-    visible_dest.write_text(visible_json)
+    write_json(visible_dest, visible_json)
     # Harness-side copy of the visible split: the scorer reads this one, so an
     # agent editing its workspace copy cannot inflate visible_pass.
-    (hidden_dir / "visible.json").write_text(visible_json)
-    (hidden_dir / "validation.json").write_text(json.dumps(splits["validation"], indent=1) + "\n")
-    (hidden_dir / "heldout.json").write_text(json.dumps(splits["heldout"], indent=1) + "\n")
+    write_json(hidden_dir / "visible.json", visible_json)
+    write_json(hidden_dir / "validation.json", json.dumps(splits["validation"], indent=1) + "\n")
+    write_json(hidden_dir / "heldout.json", json.dumps(splits["heldout"], indent=1) + "\n")
 
     manifest = {
         "seed": seed,
@@ -172,7 +189,7 @@ def write_splits(
             for section in sorted({e["section"] for e in examples})
         },
     }
-    (hidden_dir / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
+    write_json(hidden_dir / "manifest.json", json.dumps(manifest, indent=1) + "\n")
     return manifest
 
 
@@ -186,7 +203,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--hidden-dir",
         type=Path,
         required=True,
-        help="harness-side dir for validation.json, heldout.json, manifest.json",
+        help="harness-side dir for visible (scorer's copy), validation, heldout, manifest",
     )
     ap.add_argument(
         "--visible-dest",

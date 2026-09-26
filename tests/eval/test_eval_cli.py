@@ -85,6 +85,21 @@ def test_split_refuses_hidden_dir_inside_workspace(monkeypatch, tmp_path) -> Non
     assert not (ws / "splits").exists()
 
 
+def test_split_replaces_preplanted_symlink_in_hidden_dir(monkeypatch, tmp_path) -> None:
+    """A symlink pre-planted at hidden/visible.json cannot redirect a split into ws.
+
+    write_text() would follow it (gpt-5.6-sol review finding 2); the atomic
+    os.replace() write swaps the symlink out for a real file instead.
+    """
+    ws, hidden = set_paths(monkeypatch, tmp_path)
+    hidden.mkdir(parents=True)
+    (hidden / "visible.json").symlink_to(ws / "evil.json")
+    assert main(["split"]) == 0
+    assert not (hidden / "visible.json").is_symlink()
+    assert not (ws / "evil.json").exists()
+    assert len(json.loads((hidden / "visible.json").read_text())) == 196
+
+
 def test_split_refuses_workspace_symlink_into_hidden_dir(monkeypatch, tmp_path) -> None:
     """Invariant I1: a symlink inside the workspace resolving to the splits dir is rejected."""
     ws, hidden = set_paths(monkeypatch, tmp_path)

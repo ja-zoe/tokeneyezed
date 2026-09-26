@@ -166,6 +166,19 @@ def test_renderer_never_sees_harness_environment(tmp_path: Path, capsys, monkeyp
     assert out["counts"] == {"total": 1, "passed": 1, "failed": 0, "errors": 0, "timeouts": 0}
 
 
+def test_empty_path_falls_back_to_system_bin_dirs(tmp_path: Path, capsys, monkeypatch) -> None:
+    """PATH="" in the harness env still lets the default `python3 render.py` resolve.
+
+    `os.environ.get("PATH", fallback)` kept the empty string (gpt-5.6-sol review
+    finding 3); the renderer env must fall back to the system bin dirs instead.
+    """
+    monkeypatch.setenv("PATH", "")
+    ws = make_workspace(tmp_path, TABS)
+    split = write_split(tmp_path, "s.json", TABS[:1])
+    out = run_cli(capsys, ["single", "--file", split, "--workspace", str(ws)])
+    assert out["counts"] == {"total": 1, "passed": 1, "failed": 0, "errors": 0, "timeouts": 0}
+
+
 def test_invalid_utf8_output_is_a_fail_not_a_crash(tmp_path: Path, capsys) -> None:
     """A renderer emitting invalid UTF-8 scores as a fail; the run keeps going.
 

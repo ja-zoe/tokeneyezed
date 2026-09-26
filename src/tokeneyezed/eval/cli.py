@@ -42,7 +42,8 @@ def workspace_dir() -> Path:
 
 
 def splits_dir() -> Path:
-    """The harness-side dir for validation/heldout/manifest, outside the workspace (I1)."""
+    """The harness-side dir for the scorer's visible copy, validation, heldout, and
+    manifest, outside the workspace (I1)."""
     return _env_path("TOKENEYEZED_SPLITS_DIR", DEFAULT_SPLITS_DIR)
 
 
