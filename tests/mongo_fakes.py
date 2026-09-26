@@ -39,6 +39,8 @@ class FakeCollection:
                         return False
                     if "$in" in value and doc.get(key) not in value["$in"]:
                         return False
+                    if "$nin" in value and doc.get(key) in value["$nin"]:
+                        return False
                 elif doc.get(key) != value:
                     return False
             return True
