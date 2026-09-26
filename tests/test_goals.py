@@ -6,7 +6,7 @@ import pytest
 from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller import fakes
-from tokeneyezed.data.brief import MongoBriefBuilder, goal_text
+from tokeneyezed.data.brief import MongoBriefBuilder, build_brief
 from tokeneyezed.data.compactor import MongoCompactor
 from tokeneyezed.data.goals import COMPLETE, OPEN, MongoGoalStore, goal_id_for
 from tokeneyezed.data.ledger import MongoLedger
@@ -31,7 +31,7 @@ def test_seed_writes_one_goal_per_section_in_the_master_plan_shape() -> None:
     assert first["goal_id"] == "S:Tabs" == goal_id_for("S", "Tabs")
     assert first["session_id"] == "S" and first["status"] == OPEN and first["priority"] == 0
     assert first["completion_criteria"] == {"val_pass": 0.85}
-    assert first["strategy_notes"] is None and first["replan_count"] == 0
+    assert first["strategy_notes"] == "" and first["replan_count"] == 0
     assert first["last_replanned_at"] is None and isinstance(first["created_at"], datetime)
 
 
@@ -70,7 +70,7 @@ def test_replan_records_the_strategy_and_keeps_the_goal_open_at_its_priority() -
     assert doc["replan_count"] == 2 and isinstance(doc["last_replanned_at"], datetime)
     assert store.next_open("S").goal_id == "S:Tabs"  # the same goal, now with a new strategy
     assert store.strategy_notes("S:Tabs") == "try expanding tabs to 4-column stops first"
-    assert store.strategy_notes("S:Links") is None
+    assert store.strategy_notes("S:Links") == ""
 
 
 def test_reseeding_never_resets_progress() -> None:
@@ -118,9 +118,47 @@ def test_replan_rejects_an_empty_note() -> None:
 # --- the replan note reaches the planner through the brief --------------------------------
 
 
-def test_goal_text_carries_the_strategy_only_after_a_replan() -> None:
-    assert goal_text("Tabs", None) == "Tabs"
-    assert goal_text("Tabs", "use tab stops") == "Tabs. Replanned; strategy now: use tab stops"
+def test_a_replan_note_is_shown_but_never_searched_with() -> None:
+    # Retrieval keeps querying the section after a replan: the note is shown to the planner only.
+    payloads: list = []
+
+    class RecordingDB(FakeDB):
+        pass
+
+    db = RecordingDB()
+    emb = embedder()
+    real_embed = emb.embed
+
+    def spy(texts, input_type):
+        payloads.append((list(texts), input_type))
+        return real_embed(texts, input_type)
+
+    emb.embed = spy
+    brief = build_brief(
+        session_id="S",
+        goal_id="S:Tabs",
+        section="Tabs",
+        goal_text="Tabs",
+        strategy_notes="expand tabs to 4-column stops before parsing blocks",
+        db=db,
+        embedder=emb,
+    )
+    assert payloads == [(["Tabs"], "query")]
+    goal_section = brief.render().split("## Goal")[1].split("##")[0]
+    assert "- Tabs\n" in goal_section
+    assert "Current strategy (latest replan): expand tabs to 4-column stops" in goal_section
+
+
+def test_no_strategy_line_before_a_replan() -> None:
+    brief = build_brief(
+        session_id="S",
+        goal_id="S:Tabs",
+        section="Tabs",
+        goal_text="Tabs",
+        db=FakeDB(),
+        embedder=embedder(),
+    )
+    assert "Current strategy" not in brief.render()
 
 
 def test_a_replan_note_appears_in_the_next_brief() -> None:
@@ -165,3 +203,51 @@ def test_data_ports_plug_into_the_controllers_ports() -> None:
         reviewer=others.reviewer,
     )
     assert isinstance(ports.goals, MongoGoalStore)
+
+
+def test_seed_survives_losing_a_race_on_the_unique_goal_id() -> None:
+    from pymongo.errors import DuplicateKeyError
+
+    db = FakeDB()
+    real = db["goals"].update_one
+    calls = []
+
+    def racing(query, update, upsert=False):
+        calls.append(query["goal_id"])
+        if len(calls) == 1:
+            real(query, update, upsert=upsert)  # the other process's insert lands first
+            raise DuplicateKeyError("E11000 duplicate key error collection: goals index: goal_id_1")
+        return real(query, update, upsert=upsert)
+
+    db["goals"].update_one = racing
+    MongoGoalStore(db=db).seed("S", SECTIONS, 0.85)
+    assert [d["goal_id"] for d in db["goals"].docs] == [goal_id_for("S", s) for s in SECTIONS]
+
+
+def test_next_open_carries_the_strategy_when_the_goal_type_has_the_field(monkeypatch) -> None:
+    # Once the shared Goal gains strategy_notes (PR #14), next_open fills it from the document.
+    from dataclasses import dataclass
+
+    from tokeneyezed.data import goals as goals_module
+
+    @dataclass(frozen=True)
+    class GoalWithNotes:
+        goal_id: str
+        section: str
+        target_val_pass: float
+        strategy_notes: str = ""
+
+    monkeypatch.setattr(goals_module, "Goal", GoalWithNotes)
+    monkeypatch.setattr(goals_module, "_GOAL_HAS_NOTES", True)
+    _, store = seeded()
+    assert store.next_open("S").strategy_notes == ""
+    store.replan("S:Tabs", "expand tabs first")
+    assert store.next_open("S").strategy_notes == "expand tabs first"
+
+
+def test_brief_uses_the_goals_own_strategy_when_it_carries_one() -> None:
+    from types import SimpleNamespace
+
+    goal = SimpleNamespace(goal_id="S:Tabs", section="Tabs", strategy_notes="from the Goal")
+    text = MongoBriefBuilder(db=FakeDB(), embedder=embedder()).build("S", goal, use_memory=True)
+    assert "Current strategy (latest replan): from the Goal" in text

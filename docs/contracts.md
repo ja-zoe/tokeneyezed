@@ -34,11 +34,11 @@ One document per spec section per session, in `goals`. Written only by `MongoGoa
 
 | Field | Meaning |
 |---|---|
-| `goal_id` | `<session_id>:<section>`. |
+| `goal_id` | `<session_id>:<section>`. Unique (index `goal_id_1`). |
 | `status` | `open` or `complete`. |
 | `priority` | Lower goes first; seeded in config order. A replan does **not** change it: the goal stays next, with a new strategy. |
 | `completion_criteria.val_pass` | The goal completes when its section's validation pass rate reaches this. |
-| `strategy_notes` | The latest replan note, or `null` before the first replan. The brief shows it to the planner. |
+| `strategy_notes` | The goal's current strategy, set by the latest replan; `""` before the first. The brief shows it to the planner on its own line; it is never used as a search query, so retrieval keeps matching the section. |
 | `replan_count`, `last_replanned_at` | How often and when the goal was replanned. |
 
 ## Attempt (locked by Aaron)

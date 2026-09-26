@@ -7,8 +7,10 @@ Document shape (master plan, "MongoDB data model"; docs/contracts.md):
      last_replanned_at, created_at, completed_at}
 
 - `priority`: lower goes first; seeded in config order.
-- `strategy_notes`: the latest replan note, or None before the first replan. The brief builder
-  shows it to the planner, so a replan actually changes the next attempt's plan.
+- `strategy_notes`: the goal's current strategy, set by the latest replan; "" before the first.
+  next_open returns it on the Goal, and the brief shows it to the planner, so a replan actually
+  changes the next attempt's plan.
+- `goal_id` is unique (data/indexes.py CLASSIC_INDEXES), so concurrent seeds can't duplicate a goal.
 - A replan keeps the goal open and at its priority: the demo beat is the goal document changing in
   Atlas after a failure streak and the score improving on that goal afterward.
 - `seed` is idempotent: re-seeding (e.g. after a resume) never resets progress or notes.
@@ -25,11 +27,16 @@ from typing import Any
 
 from pymongo.collection import Collection
 from pymongo.database import Database
+from pymongo.errors import DuplicateKeyError
 
 from tokeneyezed.data.db import get_db
 from tokeneyezed.ports import Goal
 
 OPEN, COMPLETE = "open", "complete"
+
+# Goal gains `strategy_notes` in the shared ports (PR #14). Until that lands, next_open leaves it
+# off the Goal and the brief reads it from `goals` instead.
+_GOAL_HAS_NOTES = "strategy_notes" in Goal.__dataclass_fields__
 
 
 def goal_id_for(session_id: str, section: str) -> str:
@@ -64,39 +71,45 @@ class MongoGoalStore:
         now = datetime.now(UTC)
         for priority, section in enumerate(sections):
             goal_id = goal_id_for(session_id, section)
-            self._goals().update_one(
-                {"goal_id": goal_id},
-                {
-                    "$setOnInsert": {
-                        "goal_id": goal_id,
-                        "session_id": session_id,
-                        "section": section,
-                        "status": OPEN,
-                        "priority": priority,
-                        "completion_criteria": {"val_pass": target_val_pass},
-                        "strategy_notes": None,
-                        "replan_count": 0,
-                        "last_replanned_at": None,
-                        "created_at": now,
-                    }
-                },
-                upsert=True,
-            )
+            try:
+                self._goals().update_one(
+                    {"goal_id": goal_id},
+                    {
+                        "$setOnInsert": {
+                            "goal_id": goal_id,
+                            "session_id": session_id,
+                            "section": section,
+                            "status": OPEN,
+                            "priority": priority,
+                            "completion_criteria": {"val_pass": target_val_pass},
+                            "strategy_notes": "",
+                            "replan_count": 0,
+                            "last_replanned_at": None,
+                            "created_at": now,
+                        }
+                    },
+                    upsert=True,
+                )
+            except DuplicateKeyError:
+                pass  # a concurrent seed inserted this goal first; the unique index kept it single
 
     def next_open(self, session_id: str) -> Goal | None:
         """The open goal with the lowest priority number, or None when every goal is complete."""
         doc = self._goals().find_one(
             {"session_id": session_id, "status": OPEN},
-            {"goal_id": 1, "section": 1, "completion_criteria": 1},
+            {"goal_id": 1, "section": 1, "completion_criteria": 1, "strategy_notes": 1},
             sort=[("priority", 1)],
         )
         if doc is None:
             return None
-        return Goal(
-            goal_id=doc["goal_id"],
-            section=doc["section"],
-            target_val_pass=doc["completion_criteria"]["val_pass"],
-        )
+        fields: dict[str, Any] = {
+            "goal_id": doc["goal_id"],
+            "section": doc["section"],
+            "target_val_pass": doc["completion_criteria"]["val_pass"],
+        }
+        if _GOAL_HAS_NOTES:
+            fields["strategy_notes"] = doc.get("strategy_notes") or ""
+        return Goal(**fields)
 
     def replan(self, goal_id: str, note: str) -> None:
         """Record the new strategy. The goal stays open at its priority."""
@@ -121,10 +134,10 @@ class MongoGoalStore:
         if result.matched_count != 1:
             raise LookupError(f"no goal {goal_id!r}")
 
-    def strategy_notes(self, goal_id: str) -> str | None:
-        """The goal's latest replan note, for the brief. None before any replan."""
+    def strategy_notes(self, goal_id: str) -> str:
+        """The goal's current strategy, "" before any replan (or for an unknown goal)."""
         doc = self._goals().find_one({"goal_id": goal_id}, {"strategy_notes": 1})
-        return doc.get("strategy_notes") if doc else None
+        return (doc.get("strategy_notes") or "") if doc else ""
 
     def _goals(self) -> Collection:
         return (self._db if self._db is not None else get_db())["goals"]
