@@ -176,3 +176,45 @@ def test_large_input_is_split_into_batches_of_at_most_128() -> None:
 def test_invalid_input_type_is_rejected() -> None:
     with pytest.raises(ValueError):
         make(lambda p: ok_body(1)).embed(["x"], "doc")
+
+
+def test_response_missing_index_is_an_error_and_write_path_returns_none() -> None:
+    body = {"data": [{"embedding": vector()}], "usage": {"total_tokens": 1}}
+    with pytest.raises(EmbeddingError):
+        make(lambda p: body).embed(["x"], "document")
+    assert make(lambda p: body).embed_document_or_none("x") is None
+
+
+def test_budget_preserves_actual_usage_and_refuses_further_calls_after_overshoot() -> None:
+    calls = []
+    embedder = make(lambda p: calls.append(p) or ok_body(1, tokens=10), budget=3)
+    with pytest.raises(BudgetExceeded):
+        embedder.embed(["x"], "document")
+    assert embedder._budget.spent == 10
+    assert embedder.embed_document_or_none("x") is None
+    assert embedder._budget.spent == 10
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        None,
+        [],
+        {"data": [{"index": 0}]},
+        {"data": [{"index": 0, "embedding": None}]},
+        {"data": [{"index": 0, "embedding": [0.1]}]},
+        {"data": None},
+        {"usage": "invalid"},
+        {"usage": {"total_tokens": -1}},
+    ],
+)
+def test_malformed_responses_do_not_escape_write_fallback(body) -> None:
+    assert make(lambda p: body).embed_document_or_none("x") is None
+
+
+def test_malformed_embedding_still_accounts_for_reported_usage() -> None:
+    body = {"data": [{"embedding": vector()}], "usage": {"total_tokens": 7}}
+    embedder = make(lambda p: body)
+    assert embedder.embed_document_or_none("x") is None
+    assert embedder._budget.spent == 7
