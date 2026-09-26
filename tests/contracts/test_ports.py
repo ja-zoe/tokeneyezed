@@ -21,6 +21,7 @@ from tokeneyezed.data.brief import MongoBriefBuilder
 from tokeneyezed.data.compactor import MongoCompactor
 from tokeneyezed.data.goals import MongoGoalStore
 from tokeneyezed.data.ledger import MongoLedger
+from tokeneyezed.eval.scoring import SpecScorer
 from tokeneyezed.observer.reviewer import GamingReviewer
 from tokeneyezed.openrouter import OpenRouterClient
 from tokeneyezed.ports import (
@@ -116,7 +117,25 @@ def codex_runner_on_fake_binary():
 
 
 RUNNERS = [fakes.FakeRunner, claude_runner_on_fake_binary, codex_runner_on_fake_binary]
-SCORERS = [fakes.ScriptedScorer]
+
+
+def spec_scorer_on_fake_scorer():
+    def fake(**kwargs):
+        return {
+            "visible_pass": 0.5,
+            "val_pass": 0.25,
+            "per_section": {
+                "Tabs": {"visible": 1.0, "val": 0.5},
+                "Precedence": {"visible": None, "val": 0.0},
+            },
+        }
+
+    return SpecScorer(
+        workspace=Path("ws"), visible=Path("v.json"), validation=Path("val.json"), score_fn=fake
+    )
+
+
+SCORERS = [fakes.ScriptedScorer, spec_scorer_on_fake_scorer]
 REVIEWERS = [fakes.FakeReviewer, GamingReviewer]
 
 
@@ -223,7 +242,7 @@ def test_scorer(make):
     assert isinstance(score, Score)
     assert 0 <= score.visible_pass <= 1 and 0 <= score.val_pass <= 1
     for rates in score.per_section.values():
-        assert set(rates) >= {"visible", "val"}
+        assert "val" in rates and set(rates) <= {"visible", "val"}  # visible: optional
         assert all(0 <= r <= 1 for r in rates.values())
 
 

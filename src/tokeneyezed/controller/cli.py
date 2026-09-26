@@ -187,8 +187,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     attempt.set_defaults(func=cmd_attempt)
 
     from tokeneyezed.data import commands as data_commands
+    from tokeneyezed.eval import commands as eval_commands
 
     data_commands.register(sub)  # db init|check|backfill, eval retrieval (docs/commands.md)
+    eval_commands.register(sub)  # workspace init, heldout (docs/commands.md)
 
     args = parser.parse_args(argv)
     load_dotenv()
