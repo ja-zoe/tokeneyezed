@@ -23,7 +23,12 @@ mode = os.environ.get("FAKE_CLAUDE_MODE", "edit")
 if mode == "edit":
     with open("renderer.py", "w") as f:
         f.write("def render(md):\n    return md\n")
+    # The same shapes the real CLI emits (see blocked_calls): a tool call the pre-gate blocked.
     print(json.dumps({"type": "system", "subtype": "init"}))
+    use = {"type": "tool_use", "name": "Bash", "input": {"command": "pip install markdown-it-py"}}
+    print(json.dumps({"type": "assistant", "message": {"content": [use]}}))
+    print(json.dumps({"type": "system", "subtype": "hook_response", "hook_name": "PreToolUse:Bash",
+        "hook_event": "PreToolUse", "exit_code": 2, "stderr": "honeypot: forbidden\n"}))
     print(json.dumps({"type": "result", "subtype": "success"}))
 elif mode == "hang":
     child = subprocess.Popen(["sleep", "60"])

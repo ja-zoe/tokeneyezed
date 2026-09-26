@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from tokeneyezed.controller.config import RunConfig
+from tokeneyezed.controller.config import RunConfig, agent_model
 from tokeneyezed.controller.runners.claude import ClaudeRunner, RunnerPaths
 
 
@@ -21,7 +21,7 @@ def claude_runner_from_env(config: RunConfig) -> ClaudeRunner:
     )
     return ClaudeRunner(
         paths,
-        model=config.model,
+        model=agent_model(config, "claude"),
         max_turns=config.max_turns,
         timebox_seconds=config.timebox_minutes * 60,
         allowed_tools=config.allowed_tools,

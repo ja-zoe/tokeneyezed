@@ -50,14 +50,20 @@ The Codex runner, starting the observer service automatically (run it with Dhars
 ## Tests (the merge gate)
 
 Automated, with a **fake `claude` executable** on `PATH` that behaves like the real one (edits a file in its cwd, emits `stream-json` lines including a blocked hook event, exits):
-- [ ] The command has every required flag, never `--bare`, and points `--settings` at a file outside the workspace; the environment carries the observer variables.
-- [ ] `run` writes the transcript, commits the agent's edits, and returns a commit, a diff summary, and the blocked calls.
-- [ ] The timebox terminates a hung agent and the attempt still returns a result; an interrupted controller raises `AttemptKilled` and leaves no agent process behind.
-- [ ] `reset_workspace` discards uncommitted edits and returns to the given commit (or the root commit for `None`).
-- [ ] Isolation: a workspace inside the harness repo, or settings/spool/transcripts/config dir inside the workspace, are refused (I2, I6 now enforced).
-- [ ] `ClaudeRunner` (on the fake binary) passes the `AttemptRunner` contract test.
-- [ ] `uv run pytest -rs`, `uv run ruff check`, `uv run ruff format --check` pass.
+- [x] The command has every required flag, never `--bare`, and points `--settings` at a file outside the workspace; the environment carries the observer variables.
+- [x] `run` writes the transcript, commits the agent's edits, and returns a commit, a diff summary, and the blocked calls.
+- [x] The timebox terminates a hung agent and the attempt still returns a result; an interrupted controller raises `AttemptKilled` and leaves no agent process behind.
+- [x] `reset_workspace` discards uncommitted edits and returns to the given commit (or the root commit for `None`).
+- [x] Isolation: a workspace inside the harness repo, or settings/spool/transcripts/config dir inside the workspace, are refused (I2, I6 now enforced).
+- [x] `ClaudeRunner` (on the fake binary) passes the `AttemptRunner` contract test.
+- [x] `uv run pytest -rs`, `uv run ruff check`, `uv run ruff format --check` pass.
 
-**Live smoke test (manual, one real attempt, before merging):** a scratch task workspace, Dharshan's observer service running, and `tokeneyezed attempt` with a brief that asks for `pip install markdown-it-py` and a small file edit. Passes if: the hook events reach the observer's audit log, the install is blocked and never runs, the edit is committed, the feed shows `BLOCKED`, and the stream's init event shows no personal config (CLAUDE.md, hooks, plugins). This doubles as the Claude half of Dharshan's hook admission test.
+**Live smoke test (done 2026-09-26, passed; see the PR):** a scratch task workspace, Dharshan's observer service running, and `tokeneyezed attempt` with a brief that asks for `pip install markdown-it-py` and a small file edit. Passes if: the hook events reach the observer's audit log, the install is blocked and never runs, the edit is committed, the feed shows `BLOCKED`, and the stream's init event shows no personal config (CLAUDE.md, hooks, plugins). This doubles as the Claude half of Dharshan's hook admission test.
 
 Ship: PR from this branch, squash-merged after Julian approves.
+
+## Amendments from the live smoke test (2026-09-26)
+
+- **A clean agent needs more than a dedicated config dir.** The account's claude.ai connectors (Gmail, Drive, Calendar) and account skills still attached, and Claude Code's auto-memory was on. The runner now passes `--tools Bash,Read,Edit,Write,Grep,Glob --strict-mcp-config --disable-slash-commands --no-session-persistence --no-chrome` and sets `autoMemoryEnabled: false` in the hook settings. Verified in the `init` event: six tools, no MCP servers, no skills, no memory path, subscription auth.
+- **Per-agent models:** `configs/base.toml` has a `[models]` table (claude, codex, planner); the runner uses its agent's entry.
+- **Hook-event format** (claude 2.1.283): the assistant `tool_use`, then `system`/`hook_response` with `hook_event: PreToolUse`, `exit_code: 2`, and the reason on `stderr`. `blocked_calls()` parses exactly that.

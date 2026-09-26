@@ -118,15 +118,19 @@ def test_i7_run_files_cannot_override_shared_settings(tmp_path: Path) -> None:
     # Proves the loader rejects a run file that changes a shared setting, so I7 can't drift.
     (tmp_path / "base.toml").write_text((CONFIGS / "base.toml").read_text())
     (tmp_path / "rogue.toml").write_text(
-        'extends = "base.toml"\nname = "X"\nagent = "claude"\nmemory = true\nmodel = "other"\n'
+        'extends = "base.toml"\nname = "X"\nagent = "claude"\nmemory = true\n'
+        '[models]\nclaude = "x"\n'
     )
-    with pytest.raises(ValueError, match="model"):
+    with pytest.raises(ValueError, match="models"):
         load_config(tmp_path / "rogue.toml")
 
 
 def test_i7_same_pinned_model_across_runs() -> None:
     configs = [load_config(CONFIGS / name) for name in RUN_CONFIGS]
-    shared = {(c.model, c.max_attempts, c.max_turns, c.failure_threshold) for c in configs}
+    shared = {
+        (tuple(sorted(c.models.items())), c.max_attempts, c.max_turns, c.failure_threshold)
+        for c in configs
+    }
     assert len(shared) == 1, f"B, H, and H-mem differ in shared settings: {shared}"
 
 

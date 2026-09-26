@@ -21,6 +21,9 @@ from tokeneyezed.ports import AttemptKilled, AttemptResult
 
 HARNESS_ROOT = Path(__file__).resolve().parents[4]
 GRACE_SECONDS = 10  # after SIGTERM, before SIGKILL
+# The only built-in tools the agent gets. No web access (it could fetch an existing CommonMark
+# implementation), and the same set for B, H, and H-mem.
+AGENT_TOOLS = "Bash,Read,Edit,Write,Grep,Glob"
 GIT_IDENTITY = ["-c", "user.name=tokeneyezed", "-c", "user.email=harness@tokeneyezed.invalid"]
 
 
@@ -81,7 +84,7 @@ class ClaudeRunner:
         python: str = sys.executable,
     ) -> None:
         if not model:
-            raise ValueError("no pinned model: set `model` in configs/base.toml")
+            raise ValueError("no pinned model: set [models].claude in configs/base.toml")
         if not observer_token:
             raise ValueError("TOKENEYEZED_OBSERVER_TOKEN is not set (must match the observer's)")
         self.paths = check_isolation(paths)
@@ -121,11 +124,14 @@ class ClaudeRunner:
             "command": f"{shlex.quote(self.python)} -m tokeneyezed.observer.shim",
         }
         return {
+            # Claude Code's own cross-session memory would give every run (the baseline too) a
+            # memory outside the harness; the harness's memory must be the only one.
+            "autoMemoryEnabled": False,
             "hooks": {
                 "PreToolUse": [{"matcher": "*", "hooks": [shim]}],
                 "PostToolUse": [{"matcher": "*", "hooks": [shim]}],
                 "Stop": [{"hooks": [shim]}],
-            }
+            },
         }
 
     def command(self, prompt: str, settings_file: Path) -> list[str]:
@@ -133,6 +139,10 @@ class ClaudeRunner:
         cmd += ["--model", self.model, "--max-turns", str(self.max_turns)]
         cmd += ["--permission-mode", "acceptEdits", "--permission-prompts", "none"]
         cmd += ["--allowedTools", *self.allowed_tools]
+        # A clean agent: only the coding tools, no MCP servers (the account's claude.ai
+        # connectors, e.g. Gmail and Drive, attach otherwise), no skills, nothing persisted.
+        cmd += ["--tools", AGENT_TOOLS, "--strict-mcp-config", "--disable-slash-commands"]
+        cmd += ["--no-session-persistence", "--no-chrome"]
         cmd += ["--output-format", "stream-json", "--verbose", "--include-hook-events"]
         return cmd
 
@@ -219,5 +229,31 @@ class ClaudeRunner:
 
 
 def blocked_calls(transcript: Path) -> tuple[str, ...]:
-    """Tool calls the pre-gate blocked, read from the stream-json transcript's hook events."""
-    return ()
+    """Tool calls the pre-gate blocked, read from the stream-json transcript's hook events.
+
+    Format (claude 2.1.283, confirmed in the live smoke test): the assistant's `tool_use` comes
+    first, then a `system`/`hook_response` for `PreToolUse:<Tool>`; a block is exit code 2 with the
+    reason on stderr. Each block is reported as "<command or path>  (<reason>)".
+    """
+    calls: list[str] = []
+    last_use: dict[str, dict] = {}  # tool name -> input of its most recent tool_use
+    for raw in transcript.read_text().splitlines():
+        try:
+            message = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if message.get("type") == "assistant":
+            for part in message.get("message", {}).get("content", []):
+                if part.get("type") == "tool_use":
+                    last_use[part.get("name", "")] = part.get("input") or {}
+        elif (
+            message.get("subtype") == "hook_response"
+            and message.get("hook_event") == "PreToolUse"
+            and message.get("exit_code") == 2
+        ):
+            tool = message.get("hook_name", "").partition(":")[2]
+            called = last_use.get(tool, {})
+            what = called.get("command") or called.get("file_path") or tool
+            reason = (message.get("stderr") or "").strip()
+            calls.append(f"{what}  ({reason})" if reason else what)
+    return tuple(calls)

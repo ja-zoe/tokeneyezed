@@ -7,6 +7,7 @@ must match across B, H, and H-mem (model, budget, timebox) lives in one place (i
 from __future__ import annotations
 
 import tomllib
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,7 @@ RUN_SPECIFIC_KEYS = frozenset({"name", "agent", "memory", "extends"})
 class RunConfig:
     name: str
     agent: str
-    model: str
+    models: Mapping[str, str]  # agent ("claude", "codex", ...) or "planner" -> model id
     memory: bool
     max_attempts: int
     max_turns: int
@@ -46,4 +47,15 @@ def load_config(path: str | Path) -> RunConfig:
     merged.pop("extends", None)
     merged["sections"] = tuple(merged["sections"])
     merged["allowed_tools"] = tuple(merged["allowed_tools"])
+    merged["models"] = dict(merged["models"])
     return RunConfig(**merged)
+
+
+def agent_model(config: RunConfig, agent: str) -> str:
+    """The pinned model for an agent. Refuses to guess: an unset model is a config error."""
+    model = config.models.get(agent, "")
+    if not model:
+        raise ValueError(
+            f"no pinned model for agent {agent!r}: set [models].{agent} in configs/base.toml"
+        )
+    return model
