@@ -34,10 +34,6 @@ from tokeneyezed.ports import Goal
 
 OPEN, COMPLETE = "open", "complete"
 
-# Goal gains `strategy_notes` in the shared ports (PR #14). Until that lands, next_open leaves it
-# off the Goal and the brief reads it from `goals` instead.
-_GOAL_HAS_NOTES = "strategy_notes" in Goal.__dataclass_fields__
-
 
 def goal_id_for(session_id: str, section: str) -> str:
     """The controller's goal id convention; the retrieval eval parses the section back out."""
@@ -102,14 +98,12 @@ class MongoGoalStore:
         )
         if doc is None:
             return None
-        fields: dict[str, Any] = {
-            "goal_id": doc["goal_id"],
-            "section": doc["section"],
-            "target_val_pass": doc["completion_criteria"]["val_pass"],
-        }
-        if _GOAL_HAS_NOTES:
-            fields["strategy_notes"] = doc.get("strategy_notes") or ""
-        return Goal(**fields)
+        return Goal(
+            goal_id=doc["goal_id"],
+            section=doc["section"],
+            target_val_pass=doc["completion_criteria"]["val_pass"],
+            strategy_notes=doc.get("strategy_notes") or "",
+        )
 
     def replan(self, goal_id: str, note: str) -> None:
         """Record the new strategy. The goal stays open at its priority."""

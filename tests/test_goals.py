@@ -224,21 +224,7 @@ def test_seed_survives_losing_a_race_on_the_unique_goal_id() -> None:
     assert [d["goal_id"] for d in db["goals"].docs] == [goal_id_for("S", s) for s in SECTIONS]
 
 
-def test_next_open_carries_the_strategy_when_the_goal_type_has_the_field(monkeypatch) -> None:
-    # Once the shared Goal gains strategy_notes (PR #14), next_open fills it from the document.
-    from dataclasses import dataclass
-
-    from tokeneyezed.data import goals as goals_module
-
-    @dataclass(frozen=True)
-    class GoalWithNotes:
-        goal_id: str
-        section: str
-        target_val_pass: float
-        strategy_notes: str = ""
-
-    monkeypatch.setattr(goals_module, "Goal", GoalWithNotes)
-    monkeypatch.setattr(goals_module, "_GOAL_HAS_NOTES", True)
+def test_next_open_carries_the_current_strategy() -> None:
     _, store = seeded()
     assert store.next_open("S").strategy_notes == ""
     store.replan("S:Tabs", "expand tabs first")
