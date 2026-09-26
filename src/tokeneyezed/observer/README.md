@@ -63,9 +63,9 @@ not an isolation boundary against a process inheriting the hook environment.
 
 Unit tests and an HTTP integration test cover both blocked and allowed behavior.
 The Codex adapter normalizes `Bash` and `apply_patch`; patch text is passed through
-the same protected-path and forbidden-import checks as Claude edits. Codex is not
-advertised as supported until its installed hook payloads and edit blocking pass
-the repository's admission test.
+the same protected-path and forbidden-import checks as Claude edits. The runner's
+live hook/honeypot admission has passed, but repeat admission with a protected-file
+patch before claiming live tamper protection.
 
 ## Offline replay
 
