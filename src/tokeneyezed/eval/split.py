@@ -14,18 +14,25 @@ section to validation + heldout — which is why `per_section.<s>.visible` can b
 null in the scorer output.
 
 Invariant I1: the validation and heldout files must be unreachable from the task
-workspace. write_splits() refuses to place them inside the visible destination's
-directory tree (or vice versa).
+workspace. write_splits() refuses to place the hidden dir inside the workspace
+root (or vice versa); the root is --workspace when given, else the git root
+containing the visible destination, else the visible destination's directory.
+
+The hidden dir also gets its own copy of the visible split: the harness scores
+visible from that copy, so an agent editing its tests/visible.json cannot
+inflate visible_pass.
 
 Usage:
   python3 -m tokeneyezed.eval.split --hidden-dir /path/harness/splits \
-      --visible-dest /path/task-workspace/tests/visible.json [--seed 20260926]
+      --visible-dest /path/task-workspace/tests/visible.json \
+      [--workspace /path/task-workspace] [--seed 20260926]
 
 Outputs (all lists of spec.json-shaped objects):
   <hidden-dir>/validation.json
   <hidden-dir>/heldout.json
+  <hidden-dir>/visible.json    harness-side copy, the one the scorer reads
   <hidden-dir>/manifest.json   seed, spec sha256, per-section example ids per split
-  <visible-dest>               the visible split
+  <visible-dest>               the agent-visible copy of the visible split
 """
 
 from __future__ import annotations
@@ -91,22 +98,46 @@ def split_examples(examples: list[dict], seed: int) -> dict[str, list[dict]]:
     return splits
 
 
-def write_splits(
-    spec: Path, hidden_dir: Path, visible_dest: Path, seed: int, spec_version: str
-) -> dict:
-    """Split the spec and write the four output files; return the manifest.
+def workspace_root(visible_dest: Path, workspace: Path | None) -> Path:
+    """The task workspace root the I1 guard protects.
 
-    Raises SystemExit when the hidden dir and the task workspace (the visible
-    destination's directory) are reachable from each other (invariant I1).
+    Explicit --workspace wins; otherwise the git root containing visible_dest
+    (the task workspace is a git repo), falling back to its directory. The
+    fallback alone would miss layouts like ws/tests/visible.json + ws/hidden.
+    """
+    if workspace is not None:
+        return workspace.resolve()
+    for parent in visible_dest.parents:
+        if (parent / ".git").exists():
+            return parent
+    return visible_dest.parent
+
+
+def write_splits(
+    spec: Path,
+    hidden_dir: Path,
+    visible_dest: Path,
+    seed: int,
+    spec_version: str,
+    workspace: Path | None = None,
+) -> dict:
+    """Split the spec and write the five output files; return the manifest.
+
+    Raises SystemExit when the hidden dir and the task workspace root (see
+    workspace_root) are reachable from each other (invariant I1).
     """
     hidden_dir = hidden_dir.resolve()
     visible_dest = visible_dest.resolve()
-    workspace = visible_dest.parent
-    # Invariant I1: hidden splits must not live under the task workspace tree.
-    if hidden_dir.is_relative_to(workspace) or any(p == hidden_dir for p in workspace.parents):
+    root = workspace_root(visible_dest, workspace)
+    # Invariant I1: neither the hidden dir nor the workspace may contain the other.
+    if hidden_dir.is_relative_to(root) or root.is_relative_to(hidden_dir):
         raise SystemExit(
             f"refusing: hidden dir {hidden_dir} is reachable from the task "
-            f"workspace {workspace} (invariant I1)"
+            f"workspace {root} (invariant I1)"
+        )
+    if not visible_dest.is_relative_to(root):
+        raise SystemExit(
+            f"refusing: visible dest {visible_dest} is outside the task workspace {root}"
         )
 
     spec_bytes = spec.read_bytes()
@@ -120,7 +151,11 @@ def write_splits(
 
     hidden_dir.mkdir(parents=True, exist_ok=True)
     visible_dest.parent.mkdir(parents=True, exist_ok=True)
-    visible_dest.write_text(json.dumps(splits["visible"], indent=1) + "\n")
+    visible_json = json.dumps(splits["visible"], indent=1) + "\n"
+    visible_dest.write_text(visible_json)
+    # Harness-side copy of the visible split: the scorer reads this one, so an
+    # agent editing its workspace copy cannot inflate visible_pass.
+    (hidden_dir / "visible.json").write_text(visible_json)
     (hidden_dir / "validation.json").write_text(json.dumps(splits["validation"], indent=1) + "\n")
     (hidden_dir / "heldout.json").write_text(json.dumps(splits["heldout"], indent=1) + "\n")
 
@@ -159,19 +194,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         required=True,
         help="file path inside the task workspace for the visible split",
     )
+    ap.add_argument(
+        "--workspace",
+        type=Path,
+        help="task workspace root for the I1 guard (default: git root of --visible-dest)",
+    )
     ap.add_argument("--seed", type=int, default=DEFAULT_SEED)
     ap.add_argument("--spec-version", default="0.31.2")
     args = ap.parse_args(argv)
 
     manifest = write_splits(
-        args.spec, args.hidden_dir, args.visible_dest, args.seed, args.spec_version
+        args.spec, args.hidden_dir, args.visible_dest, args.seed, args.spec_version, args.workspace
     )
     total = sum(manifest["counts"].values())
     print(f"split {total} examples (seed {args.seed}):")
     for s, n in manifest["counts"].items():
         print(f"  {s:<10} {n:>3}  ({n / total:.1%})")
     print(f"visible  -> {args.visible_dest.resolve()}")
-    print(f"hidden   -> {args.hidden_dir.resolve()}/{{validation,heldout,manifest}}.json")
+    print(f"hidden   -> {args.hidden_dir.resolve()}/{{visible,validation,heldout,manifest}}.json")
     return 0
 
 

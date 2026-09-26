@@ -41,6 +41,8 @@ def test_split_counts_and_manifest(tmp_path: Path) -> None:
         ("heldout", hidden / "heldout.json"),
     ]:
         assert len(json.loads(path.read_text())) == EXPECTED_COUNTS[split_name]
+    # The harness-side visible copy (the one the scorer reads) matches byte for byte.
+    assert (hidden / "visible.json").read_bytes() == visible.read_bytes()
 
 
 def test_split_is_a_partition_of_the_spec(tmp_path: Path) -> None:
@@ -107,3 +109,42 @@ def test_i1_guard_workspace_under_hidden_dir(tmp_path: Path) -> None:
     visible = tmp_path / "splits" / "deeper" / "workspace" / "visible.json"
     with pytest.raises(SystemExit, match="invariant I1"):
         main(["--hidden-dir", str(hidden), "--visible-dest", str(visible)])
+
+
+def test_i1_guard_documented_layout_via_git_root(tmp_path: Path) -> None:
+    """ws/tests/visible.json + ws/hidden is refused: the guard finds ws via its .git.
+
+    Regression for the PR #16 review's finding 1: guarding only visible_dest's
+    own directory (ws/tests) let hidden splits land inside the workspace.
+    """
+    ws = tmp_path / "ws"
+    (ws / ".git").mkdir(parents=True)
+    visible = ws / "tests" / "visible.json"
+    hidden = ws / "hidden"
+    with pytest.raises(SystemExit, match="invariant I1"):
+        main(["--hidden-dir", str(hidden), "--visible-dest", str(visible)])
+    assert not hidden.exists()
+
+
+def test_i1_guard_explicit_workspace_flag(tmp_path: Path) -> None:
+    """--workspace names the root directly; a hidden dir under it is refused."""
+    ws = tmp_path / "ws"  # no .git — only the flag identifies the root
+    visible = ws / "tests" / "visible.json"
+    hidden = ws / "hidden"
+    with pytest.raises(SystemExit, match="invariant I1"):
+        main(["--hidden-dir", str(hidden), "--visible-dest", str(visible), "--workspace", str(ws)])
+
+
+def test_refuses_visible_dest_outside_workspace(tmp_path: Path) -> None:
+    """--visible-dest must live under --workspace, else the guard is meaningless."""
+    with pytest.raises(SystemExit, match="outside the task workspace"):
+        main(
+            [
+                "--hidden-dir",
+                str(tmp_path / "splits"),
+                "--visible-dest",
+                str(tmp_path / "elsewhere" / "visible.json"),
+                "--workspace",
+                str(tmp_path / "ws"),
+            ]
+        )

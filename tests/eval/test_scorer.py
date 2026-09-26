@@ -142,6 +142,44 @@ def test_unlaunchable_program_counts_as_error(tmp_path: Path, capsys) -> None:
     assert out["counts"] == {"total": 1, "passed": 0, "failed": 0, "errors": 1, "timeouts": 0}
 
 
+def test_renderer_never_sees_harness_environment(tmp_path: Path, capsys, monkeypatch) -> None:
+    """The renderer gets a minimal env: harness secrets and the real HOME are invisible.
+
+    Regression for the PR #16 review's finding 2: subprocess.run inherited
+    os.environ, so agent-written code could read MONGODB_URI and API keys.
+    """
+    real_home = Path.home()
+    for secret in ("MONGODB_URI", "OPENROUTER_API_KEY", "VOYAGE_API_KEY"):
+        monkeypatch.setenv(secret, "sk-super-secret")
+    probe = (
+        "import os, sys\n"
+        "sys.stdin.read()\n"
+        "leaked = [k for k in ('MONGODB_URI', 'OPENROUTER_API_KEY', 'VOYAGE_API_KEY')\n"
+        "          if k in os.environ]\n"
+        f"home_hidden = os.environ.get('HOME') != {str(real_home)!r}\n"
+        "sys.stdout.write('clean' if not leaked and home_hidden else 'leaked')\n"
+    )
+    ws = make_workspace(tmp_path, [], renderer=probe)
+    example = {"markdown": "x\n", "html": "clean", "example": 1, "section": "Tabs"}
+    split = write_split(tmp_path, "s.json", [example])
+    out = run_cli(capsys, ["single", "--file", split, "--workspace", str(ws)])
+    assert out["counts"] == {"total": 1, "passed": 1, "failed": 0, "errors": 0, "timeouts": 0}
+
+
+def test_invalid_utf8_output_is_a_fail_not_a_crash(tmp_path: Path, capsys) -> None:
+    """A renderer emitting invalid UTF-8 scores as a fail; the run keeps going.
+
+    Regression for the PR #16 review's finding 4: text=True raised
+    UnicodeDecodeError out of score_split on a single bad byte.
+    """
+    bad = "import sys\nsys.stdin.read()\nsys.stdout.buffer.write(b'\\xff')\n"
+    ws = make_workspace(tmp_path, TABS, renderer=bad)
+    split = write_split(tmp_path, "s.json", TABS[:1])
+    out = run_cli(capsys, ["single", "--file", split, "--workspace", str(ws)])
+    assert out["counts"] == {"total": 1, "passed": 0, "failed": 1, "errors": 0, "timeouts": 0}
+    assert out["pass_rate"] == 0.0
+
+
 def test_slow_renderer_times_out(tmp_path: Path, capsys) -> None:
     """A renderer exceeding --timeout is a timeout, never a pass."""
     ws = make_workspace(tmp_path, TABS, renderer="import time\ntime.sleep(5)\n")

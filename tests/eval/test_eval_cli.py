@@ -52,6 +52,7 @@ def write_split_files(ws: Path, hidden: Path) -> None:
     (ws / "tests").mkdir()
     (ws / "tests" / "visible.json").write_text(json.dumps(TABS))
     hidden.mkdir(parents=True)
+    (hidden / "visible.json").write_text(json.dumps(TABS))  # the copy the scorer reads
     (hidden / "validation.json").write_text(json.dumps([TABS[0]] + PRECEDENCE))
 
 
@@ -64,7 +65,7 @@ def test_split_writes_visible_inside_and_hidden_outside(monkeypatch, tmp_path, c
     assert manifest["seed"] == 20260926
     assert manifest["counts"] == {"visible": 196, "validation": 234, "heldout": 222}
     assert len(json.loads((ws / "tests" / "visible.json").read_text())) == 196
-    for name in ("validation.json", "heldout.json"):
+    for name in ("visible.json", "validation.json", "heldout.json"):
         assert (hidden / name).exists()
 
 
@@ -125,6 +126,22 @@ def test_score_passes_program_and_jobs_through(monkeypatch, tmp_path, capsys) ->
     assert main(["score", "--split", "visible", "--program", "cat", "--jobs", "2"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["pass_rate"] == 0.0 and out["counts"]["failed"] == 2
+
+
+def test_score_ignores_tampered_workspace_visible(monkeypatch, tmp_path, capsys) -> None:
+    """An agent-edited tests/visible.json cannot inflate visible_pass.
+
+    Regression for the PR #16 review's finding 5: visible was scored from the
+    agent-writable copy. The scorer must read the harness-side copy instead.
+    """
+    ws, hidden = set_paths(monkeypatch, tmp_path)
+    write_split_files(ws, hidden)
+    make_workspace(ws, [])  # renderer answers nothing -> every real example fails
+    (ws / "tests" / "visible.json").write_text(json.dumps([]))  # "all tests pass now"
+    assert main(["score"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["visible_pass"] == 0.0
+    assert out["counts"]["visible"]["total"] == 2  # the harness copy, not the empty one
 
 
 def test_score_without_split_files_says_run_split_first(monkeypatch, tmp_path) -> None:

@@ -91,6 +91,8 @@ def cmd_split(args: argparse.Namespace) -> int:
             str(hidden),
             "--visible-dest",
             str(ws / "tests" / "visible.json"),
+            "--workspace",
+            str(ws),
             "--seed",
             str(args.seed),
         ]
@@ -98,11 +100,16 @@ def cmd_split(args: argparse.Namespace) -> int:
 
 
 def cmd_score(args: argparse.Namespace) -> int:
-    """Score the workspace renderer and print the scorer JSON (backs Julian's Scorer port)."""
+    """Score the workspace renderer and print the scorer JSON (backs Julian's Scorer port).
+
+    Both split files come from the harness-side splits dir — visible from the
+    copy `split` wrote there, never the agent-writable tests/visible.json, so
+    an edited workspace copy cannot inflate visible_pass.
+    """
     ws = workspace_dir()
     hint = "run `tokeneyezed split` first"
     files = {
-        "visible": ws / "tests" / "visible.json",
+        "visible": splits_dir() / "visible.json",
         "validation": splits_dir() / "validation.json",
     }
     common = ["--workspace", str(ws), "--program", args.program, "--jobs", str(args.jobs)]

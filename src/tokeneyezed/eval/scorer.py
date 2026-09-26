@@ -5,7 +5,15 @@ Markdown (UTF-8) on stdin and writes HTML on stdout, run with the task
 workspace as cwd. Default: `python3 render.py`. Non-zero exit, a timeout, or
 output that differs from the spec's expected HTML all count as a fail.
 Comparison is exact string match, tolerating only a trailing-newline
-difference.
+difference. Invalid UTF-8 in the renderer's output is decoded with
+errors="replace", so it becomes an ordinary fail instead of crashing the run.
+
+The renderer runs with a minimal environment (PATH, LANG/LC_ALL, a throwaway
+HOME) — never the harness's, whose MONGODB_URI and API keys agent-written code
+must not see. Known residual hole (same Unix user, no sandbox): a renderer can
+still read any file by absolute path, including the hidden splits; mitigate by
+keeping TOKENEYEZED_SPLITS_DIR out of anything the agent sees and on the
+observer's protected-paths list.
 
 Modes and output JSON (the contract locked at 10:45 — do not rename fields):
 
@@ -40,9 +48,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shlex
 import subprocess
 import sys
+import tempfile
 import time
 from collections import defaultdict
 from collections.abc import Sequence
@@ -55,16 +65,35 @@ DEFAULT_PROGRAM = "python3 render.py"
 DEFAULT_TIMEOUT = 5.0
 
 
-def run_example(example: dict, program: list[str], workspace: str, timeout: float) -> str:
+def renderer_env(home: str) -> dict[str, str]:
+    """A minimal environment for the renderer subprocess.
+
+    Only PATH (so the renderer command resolves), a fixed UTF-8 locale, and a
+    throwaway HOME. The harness's own environment — MONGODB_URI, OPENROUTER and
+    Voyage keys — must never reach agent-written code.
+    """
+    return {
+        "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "HOME": home,
+    }
+
+
+def run_example(
+    example: dict, program: list[str], workspace: str, timeout: float, env: dict[str, str]
+) -> str:
     """Render one spec example; return 'passed', 'failed', 'error', or 'timeout'."""
     try:
         proc = subprocess.run(
             program,
             input=example["markdown"],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=workspace,
             timeout=timeout,
+            env=env,
         )
     except subprocess.TimeoutExpired:
         return "timeout"
@@ -83,9 +112,16 @@ def score_split(path: str, program: list[str], workspace: str, timeout: float, j
     """
     with open(path) as f:
         examples = json.load(f)
-    render = partial(run_example, program=program, workspace=workspace, timeout=timeout)
-    with ThreadPoolExecutor(max_workers=jobs) as pool:
-        outcomes = list(pool.map(render, examples))
+    with tempfile.TemporaryDirectory(prefix="tokeneyezed-renderer-home-") as home:
+        render = partial(
+            run_example,
+            program=program,
+            workspace=workspace,
+            timeout=timeout,
+            env=renderer_env(home),
+        )
+        with ThreadPoolExecutor(max_workers=jobs) as pool:
+            outcomes = list(pool.map(render, examples))
     counts = {"total": len(examples), "passed": 0, "failed": 0, "errors": 0, "timeouts": 0}
     by_section: dict[str, list[bool]] = defaultdict(list)
     key = {"passed": "passed", "failed": "failed", "error": "errors", "timeout": "timeouts"}
