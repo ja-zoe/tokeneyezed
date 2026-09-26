@@ -21,3 +21,9 @@ runs/
 .vscode/
 .idea/
 .DS_Store
+
+# Agent scratch (KISS task worktrees write transient notes here;
+# committing them caused stray commits on main and eval/pipeline)
+tmp/
+.kiss-worktrees/
+reports/
