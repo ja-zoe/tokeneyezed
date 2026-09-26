@@ -2,6 +2,8 @@
 
 Gaps found while reviewing the master plan and the work split. Each one needs an owner to decide it, ideally at the 10:45 contract lock. When one is settled, move the answer into `master-plan.md` or `contracts.md` and delete it here.
 
+Architecture and evaluation questions (does memory help, when to replan, observer false positives, ablations, and so on) are in [`open-research-questions.md`](open-research-questions.md).
+
 ## Contracts and plumbing
 
 1. **How do hooks know which attempt they belong to?** The shim needs `session_id`, `attempt_id`, and the planner's intent (the declared-intent check uses it), and nothing specifies how it gets them. Proposal: the attempt runner sets env vars when it launches the agent (`TOKENEYEZED_SESSION_ID`, `TOKENEYEZED_ATTEMPT_ID`, `TOKENEYEZED_INTENT`), since hooks inherit the agent's environment. *Owners: Julian + Dharshan.*
