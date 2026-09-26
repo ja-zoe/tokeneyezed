@@ -22,6 +22,7 @@ from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
+from pathlib import Path
 
 from dotenv import load_dotenv
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -31,6 +32,8 @@ from tokeneyezed.controller.config import RunConfig, load_config
 from tokeneyezed.controller.fakes import fake_ports
 from tokeneyezed.controller.graph import Context, build_graph, resume, start
 from tokeneyezed.controller.live import LiveFeed
+from tokeneyezed.observer.core import PreGate
+from tokeneyezed.observer.replay import read_event_log, replay_session
 from tokeneyezed.ports import AttemptKilled, Ports
 
 CHECKPOINT_DB = "tokeneyezed"
@@ -155,6 +158,26 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_replay(args: argparse.Namespace) -> int:
+    workspace = args.workspace.resolve()
+    if not workspace.is_dir():
+        sys.exit(f"replay workspace is not a directory: {workspace}")
+    gate = PreGate(workspace, tuple(path.resolve() for path in args.protect))
+    try:
+        report = replay_session(args.session, read_event_log(args.events), gate)
+    except (OSError, ValueError) as exc:
+        sys.exit(f"replay failed: {exc}")
+
+    print(f"session          {report.session_id}")
+    print(f"events           {report.session_events}")
+    print(f"pre-tool events  {report.pre_events}")
+    print(f"would block      {report.would_block}")
+    print(f"would allow      {report.would_allow}")
+    for reason, count in report.block_reasons.items():
+        print(f"  {count:>4}  {reason}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="tokeneyezed", description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -189,6 +212,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     from tokeneyezed.data import commands as data_commands
 
     data_commands.register(sub)  # db init|check|backfill, eval retrieval (docs/commands.md)
+
+    replay = sub.add_parser("replay", help="replay recorded events through the observer pre-gate")
+    replay.add_argument("--session", required=True, help="session ID to evaluate")
+    replay.add_argument("--events", required=True, type=Path, help="neutral event JSONL file")
+    replay.add_argument(
+        "--workspace", required=True, type=Path, help="task workspace used by the run"
+    )
+    replay.add_argument(
+        "--protect",
+        action="append",
+        default=[],
+        type=Path,
+        help="additional protected path (repeatable)",
+    )
+    replay.set_defaults(func=cmd_replay)
 
     args = parser.parse_args(argv)
     load_dotenv()
