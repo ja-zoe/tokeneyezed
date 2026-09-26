@@ -8,8 +8,11 @@ without credentials (and CI still runs the fakes).
 import os
 
 import pytest
+from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller import fakes
+from tokeneyezed.data.brief import MongoBriefBuilder
+from tokeneyezed.data.ledger import MongoLedger
 from tokeneyezed.observer.reviewer import GamingReviewer
 from tokeneyezed.ports import (
     AttemptResult,
@@ -32,12 +35,24 @@ def needs_env(var: str):
 
 
 GOAL_STORES = [fakes.InMemoryGoalStore]
-BRIEF_BUILDERS = [fakes.FakeBriefBuilder]
+
+
+def mongo_brief_builder() -> MongoBriefBuilder:
+    return MongoBriefBuilder(db=FakeDB(), embedder=embedder())
+
+
+BRIEF_BUILDERS = [fakes.FakeBriefBuilder, mongo_brief_builder]
 PLANNERS = [fakes.FakePlanner]
 RUNNERS = [fakes.FakeRunner]
 SCORERS = [fakes.ScriptedScorer]
 REVIEWERS = [fakes.FakeReviewer, GamingReviewer]
-LEDGERS = [fakes.InMemoryLedger]
+
+
+def mongo_ledger() -> MongoLedger:
+    return MongoLedger(db=FakeDB(), embedder=embedder())
+
+
+LEDGERS = [fakes.InMemoryLedger, mongo_ledger]
 COMPACTORS = [fakes.FakeCompactor]
 
 GOAL = Goal(goal_id="c:Tabs", section="Tabs", target_val_pass=0.85)
