@@ -5,6 +5,7 @@ import os
 import subprocess
 import time
 import tomllib
+from pathlib import Path
 
 import pytest
 from fake_codex import make_codex_runner
@@ -145,3 +146,33 @@ def test_refuses_missing_login_and_audit_log_in_workspace(tmp_path):
         CodexRunner(
             RunnerPaths(paths.workspace, paths.runs_dir, paths.workspace / ".codex-home"), **common
         )
+
+
+def test_blocked_calls_come_from_atlas_events_without_an_audit_log(runner, monkeypatch):
+    # With the observer storing events in Atlas (--mongo) there is no audit log to read.
+    import tokeneyezed.data.db as db_module
+
+    queries = []
+
+    class Events:
+        def find(self, query, projection):
+            queries.append(query)
+            return [
+                {
+                    "attempt_id": "s-001",
+                    "tool": "bash",
+                    "input": {"command": "pip install mistune"},
+                    "verdict": "block: honeypot",
+                },
+                {
+                    "attempt_id": "s-001",
+                    "tool": "bash",
+                    "input": {"command": "ls"},
+                    "verdict": "allow",
+                },
+            ]
+
+    monkeypatch.setattr(db_module, "get_db", lambda: type("DB", (), {"events": Events()})())
+    runner.audit_log = None
+    assert runner.blocked_calls(Path("unused"), "s-001") == ("pip install mistune  (honeypot)",)
+    assert queries == [{"attempt_id": "s-001"}]

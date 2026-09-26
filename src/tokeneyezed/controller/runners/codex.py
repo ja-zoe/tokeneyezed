@@ -74,20 +74,38 @@ class CodexRunner(HeadlessRunner):
         return [*cmd, prompt]
 
     def blocked_calls(self, transcript: Path, attempt_id: str) -> tuple[str, ...]:
-        """This attempt's `block:` verdicts from the observer's audit log (JSONL events)."""
-        if not self.audit_log or not self.audit_log.exists():
-            return ()
-        calls = []
-        for raw in self.audit_log.read_text().splitlines():
-            try:
-                event = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
-            verdict = str(event.get("verdict") or "")
-            if event.get("attempt_id") != attempt_id or not verdict.startswith("block"):
-                continue
-            called = event.get("input") or {}
-            what = str(called.get("command") or called.get("file_path") or event.get("tool"))
-            what = what.splitlines()[0][:120] if what else "tool call"
-            calls.append(f"{what}  ({verdict.removeprefix('block:').strip()})")
-        return tuple(calls)
+        """This attempt's `block:` verdicts: from the observer's audit log if it writes one
+        (--audit-log), otherwise from Atlas's events collection (--mongo)."""
+        return format_blocks(self._events(attempt_id), attempt_id)
+
+    def _events(self, attempt_id: str) -> list[dict]:
+        if self.audit_log:
+            if not self.audit_log.exists():
+                return []
+            events = []
+            for raw in self.audit_log.read_text().splitlines():
+                try:
+                    events.append(json.loads(raw))
+                except json.JSONDecodeError:
+                    continue
+            return events
+        try:
+            from tokeneyezed.data.db import get_db
+
+            return list(get_db().events.find({"attempt_id": attempt_id}, {"_id": 0}))
+        except Exception:  # no Atlas configured: the feed just shows no BLOCKED lines
+            return []
+
+
+def format_blocks(events: list[dict], attempt_id: str) -> tuple[str, ...]:
+    """'<command or path>  (<reason>)' for each of this attempt's blocked tool calls."""
+    calls = []
+    for event in events:
+        verdict = str(event.get("verdict") or "")
+        if event.get("attempt_id") != attempt_id or not verdict.startswith("block"):
+            continue
+        called = event.get("input") or {}
+        what = str(called.get("command") or called.get("file_path") or event.get("tool"))
+        what = what.splitlines()[0][:120] if what else "tool call"
+        calls.append(f"{what}  ({verdict.removeprefix('block:').strip()})")
+    return tuple(calls)

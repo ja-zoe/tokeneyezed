@@ -10,9 +10,9 @@ Every command we should be able to run, who owns it, and whether it exists yet. 
 
 | Command | What it does | Status |
 |---|---|---|
-| `tokeneyezed run --config configs/h.toml [--session-id ID]` | Start a session and stream the live feed until done or killed (Ctrl-C). Configs: `b.toml`, `h.toml`, `h-mem.toml`. | ✅ with `--fake`; real ports 📋 |
+| `tokeneyezed run --config configs/h.toml [--session-id ID]` | Start a session and stream the live feed until done or killed (Ctrl-C). Configs: `b.toml`, `h.toml`, `h-mem.toml`. Records the `sessions` document. | ✅ |
 | `tokeneyezed run ... --fake [--checkpointer memory]` | The whole loop on in-memory fakes, for trying things without Atlas or an agent. | ✅ |
-| `tokeneyezed resume ID --config configs/h.toml [--agent AGENT]` | Continue a session from its Atlas checkpoint: marks the killed attempt, resets the workspace, prints the `RESUMED` banner, and carries on, optionally on a different agent (the agent handoff). | ✅ code; needs real ports 📋 |
+| `tokeneyezed resume ID --config configs/h.toml [--agent AGENT]` | Continue a session from its Atlas checkpoint: marks the killed attempt, resets the workspace, prints the `RESUMED` banner, and carries on, optionally on a different agent (the agent handoff). | ✅ |
 | `tokeneyezed status ID` | Session progress from its checkpoint: attempts, current goal, best score per goal. | ✅ (needs `MONGODB_URI`) |
 | `tokeneyezed attempt --config configs/h.toml --intent "..." [--brief-file F]` | Run **one** real attempt with the real runner (fakes elsewhere). Smoke-tests the runner; runs the honeypot demo beat on cue. | ✅ |
 
@@ -55,9 +55,19 @@ The data commands live in `data/commands.py` and are registered from `controller
 
 ## The day's runs
 
-1. `python -m tokeneyezed.observer.service ...` in its own pane (stays up all day).
-2. `tokeneyezed baseline --config configs/b.toml` (as soon as the scorer exists).
-3. `tokeneyezed run --config configs/h.toml` and `tokeneyezed run --config configs/h-mem.toml`, each in its own pane (target 1:30).
+Proven end to end on 2026-09-26 (real Claude, Codex, planner, scorer, observer, Atlas), in a throwaway database. Setup, once per machine:
+
+1. **Split** (harness side, outside any workspace), keeping a harness copy of visible for scoring:
+   `python -m tokeneyezed.eval.split --hidden-dir ~/tz/hidden --visible-dest ~/tz/agent/visible.json && cp ~/tz/agent/visible.json ~/tz/hidden/visible.json`
+2. **Task workspace**, one per run: `tokeneyezed workspace init ~/tz/ws-h --visible ~/tz/agent/visible.json`
+3. **`.env`**: `MONGODB_URI`, `OPENROUTER_API_KEY`, `VOYAGE_API_KEY`, `TOKENEYEZED_WORKSPACE` (the run's workspace), `TOKENEYEZED_HIDDEN_DIR=~/tz/hidden`, `TOKENEYEZED_OBSERVER_TOKEN` (any random string, shared with the observer).
+4. **Observer**, in its own pane, storing events in Atlas: `TOKENEYEZED_OBSERVER_TOKEN=... python -m tokeneyezed.observer.service --workspace ~/tz/ws-h --mongo --protect ~/tz/hidden`
+
+Then:
+
+5. `tokeneyezed baseline --config configs/b.toml` (📋 next).
+6. `tokeneyezed run --config configs/h.toml` and `tokeneyezed run --config configs/h-mem.toml`, each in its own pane, each with its own workspace.
+7. At any point, and at the end: `tokeneyezed heldout SESSION --workspace ~/tz/ws-h --heldout ~/tz/hidden/heldout.json` (idempotent).
 
 ## The live demo, in order
 

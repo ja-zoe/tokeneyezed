@@ -49,8 +49,8 @@ def test_feed_shows_every_demo_beat_across_kill_and_resume():
     text = out.getvalue()
     beats = [
         r"#001  claude  Emphasis",
-        r"first score  0\.42",
-        r"improved  best 0\.42 -> 0\.58",
+        r"first score  Emphasis val 0\.42",
+        r"improved  Emphasis val 0\.42 -> 0\.58",
         r"#003  claude  Emphasis[\s\S]*FLAGGED",
         r"REPLAN  Emphasis",
         r"strategy  Try a different approach for Emphasis",
@@ -61,7 +61,7 @@ def test_feed_shows_every_demo_beat_across_kill_and_resume():
         r"attempts done  8",
         r"best val 0\.60  Links",
         r"#009  codex   Links",
-        r"improved  best 0\.60 -> 0\.90",
+        r"improved  Links val 0\.60 -> 0\.90",
         r"GOAL COMPLETE  Links \(0\.90\)",
     ]
     position = 0

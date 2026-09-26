@@ -31,7 +31,7 @@ tolerated). A non-zero exit, or more than 5 seconds for one input, counts as a f
 
 ## Testing
 
-`tests/visible.json` holds some of the spec's examples (`markdown`, `html`, `section`). Run them:
+`examples/visible.json` holds some of the spec's examples (`markdown`, `html`, `section`). Run them:
 
     python3 run_visible.py            # overall and per-section pass rate
     python3 run_visible.py --failures # also show the failing examples
@@ -52,14 +52,14 @@ if __name__ == "__main__":
     sys.stdout.write(render(sys.stdin.read()))
 '''
 
-RUN_VISIBLE = '''"""Run render.py against tests/visible.json, the way the scorer does."""
+RUN_VISIBLE = '''"""Run render.py against examples/visible.json, the way the scorer does."""
 
 import json
 import subprocess
 import sys
 from collections import defaultdict
 
-examples = json.load(open("tests/visible.json", encoding="utf-8"))
+examples = json.load(open("examples/visible.json", encoding="utf-8"))
 show = "--failures" in sys.argv
 by_section = defaultdict(list)
 for ex in examples:
@@ -93,12 +93,12 @@ def init_workspace(directory: Path, visible_split: Path) -> Path:
     if ws.exists() and any(ws.iterdir()):
         raise SystemExit(f"refusing: {ws} exists and is not empty")
     json.loads(visible_split.read_text(encoding="utf-8"))  # fail early on a bad split file
-    (ws / "tests").mkdir(parents=True)
+    (ws / "examples").mkdir(parents=True)
     (ws / "README.md").write_text(README)
     (ws / "render.py").write_text(RENDER_STUB)
     (ws / "run_visible.py").write_text(RUN_VISIBLE)
     (ws / ".gitignore").write_text(GITIGNORE)
-    shutil.copyfile(visible_split, ws / "tests" / "visible.json")
+    shutil.copyfile(visible_split, ws / "examples" / "visible.json")
     git = ["git", "-c", "user.name=tokeneyezed", "-c", "user.email=harness@tokeneyezed.invalid"]
     subprocess.run([*git, "init", "-q"], cwd=ws, check=True)
     subprocess.run([*git, "add", "-A"], cwd=ws, check=True)
