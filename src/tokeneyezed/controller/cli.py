@@ -1,7 +1,7 @@
 """`tokeneyezed` operator CLI: start, resume, and inspect harness sessions.
 
     tokeneyezed run --config configs/h.toml [--session-id ID] [--fake] [--checkpointer memory]
-    tokeneyezed resume ID --config configs/h.toml [--agent codex]
+    tokeneyezed resume ID --config configs/h.toml [--agent AGENT]
     tokeneyezed status ID
     tokeneyezed attempt --config configs/h.toml --intent "..." [--brief-file F]
 
@@ -167,7 +167,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     res = sub.add_parser("resume", help="continue a session from its latest checkpoint")
     res.add_argument("session_id")
     res.add_argument("--config", required=True)
-    res.add_argument("--agent", help="resume with a different agent, e.g. codex")
+    res.add_argument(
+        "--agent", help="resume on a different agent than the one running (the agent handoff)"
+    )
     res.set_defaults(func=cmd_resume)
 
     status = sub.add_parser("status", help="show a session's progress")
