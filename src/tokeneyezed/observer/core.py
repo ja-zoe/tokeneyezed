@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
+
+from .learner import matches_active_rule
 
 
 @dataclass(frozen=True)
@@ -119,9 +122,15 @@ class PreGate:
     programs require runner-level filesystem/process isolation as well.
     """
 
-    def __init__(self, workspace: Path, protected_paths: tuple[Path, ...] = ()):
+    def __init__(
+        self,
+        workspace: Path,
+        protected_paths: tuple[Path, ...] = (),
+        rules: Iterable[Mapping[str, Any]] = (),
+    ):
         self.workspace = workspace.resolve()
         self.protected_paths = tuple(p.resolve() for p in protected_paths)
+        self.rules = tuple(dict(rule) for rule in rules)
 
     def check(self, event: dict) -> Decision:
         try:
@@ -200,4 +209,7 @@ class PreGate:
                     return Decision("block", "tampering: protected edit target")
         elif tool == "other":
             return Decision("block", "unknown tool requires an explicit adapter")
+        pattern = matches_active_rule(event, self.rules)
+        if pattern:
+            return Decision("block", f"learned rule: {pattern}")
         return Decision("allow")

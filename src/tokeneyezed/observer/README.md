@@ -93,6 +93,20 @@ does not install the blocking observer.
 Still to build: source-based gaming review and real-agent smoke tests. The
 shared contracts remain draft; this module does not change them.
 
+shared contracts remain draft; this module does not change them.
+
+## Learned rules
+
+`tokeneyezed rules learn` reads the latest 10,000 events from Atlas and clusters repeated
+blocked pre-tool inputs by tool and block reason. Each literal input pattern is replayed over
+previously blocked, allowed, and unlabeled pre-tool events. A pattern becomes active only with at
+least two blocked matches and no allowed or unlabeled matches; other supported patterns remain
+candidates. Re-running the command replays existing rules too, retiring active rules that no longer
+meet those criteria.
+Only active rules are loaded by the Mongo-backed observer at startup, so restart the observer
+after learning to apply promotions or retirements. This is a deterministic, history-based filter,
+not proof that a pattern will generalize safely to unseen inputs.
+
 ## Reviewer port
 
 `GamingReviewer` in `observer/reviewer.py` implements the shared

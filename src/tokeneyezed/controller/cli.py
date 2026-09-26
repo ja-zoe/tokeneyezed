@@ -6,6 +6,7 @@
     tokeneyezed attempt --config configs/h.toml --intent "..." [--agent AGENT] [--brief-file F]
     tokeneyezed db init | check | backfill      (data/commands.py)
     tokeneyezed eval retrieval SESSION_ID       (data/commands.py)
+    tokeneyezed rules learn                     (observer/commands.py)
 
 Ctrl-C (or SIGTERM) kills a run; `resume` continues it from the latest checkpoint in Atlas.
 Until the real ports exist, `run --fake` runs the loop on in-memory fakes. `resume` needs the real,
@@ -267,10 +268,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     from tokeneyezed.data import commands as data_commands
     from tokeneyezed.eval import commands as eval_commands
+    from tokeneyezed.observer import commands as observer_commands
 
     data_commands.register(sub)  # db init|check|backfill, eval retrieval (docs/commands.md)
     register_eval(sub)  # eval-lane subcommands: split, score, baseline, report (docs/commands.md)
     eval_commands.register(sub)  # workspace init, heldout (docs/commands.md)
+    observer_commands.register(sub)
 
     replay = sub.add_parser("replay", help="replay recorded events through the observer pre-gate")
     replay.add_argument("--session", required=True, help="session ID to evaluate")

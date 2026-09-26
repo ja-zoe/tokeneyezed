@@ -19,12 +19,10 @@ from tokeneyezed.ports import Ports
 
 
 def hidden_split(name: str) -> Path:
-    hidden = os.environ.get("TOKENEYEZED_HIDDEN_DIR")
-    if not hidden:
-        raise SystemExit("TOKENEYEZED_HIDDEN_DIR is not set: the split's harness-side directory")
+    hidden = os.environ.get("TOKENEYEZED_SPLITS_DIR") or "~/.tokeneyezed/splits"
     path = Path(hidden).expanduser() / f"{name}.json"
     if not path.exists():
-        raise SystemExit(f"{path} is missing: run the split, and copy visible.json there too")
+        raise SystemExit(f"{path} is missing: run the split first (TOKENEYEZED_SPLITS_DIR)")
     return path
 
 

@@ -60,6 +60,7 @@ class MongoLedger:
             per_section={k: dict(v) for k, v in score.per_section.items()},
             outcome=outcome,
             observer_flags=list(observer_flags),
+            usage=getattr(result, "usage", None),
             db=self._db,
             embedder=self._embedder,
         )

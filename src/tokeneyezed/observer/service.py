@@ -89,15 +89,18 @@ def main():
             stream.write(json.dumps(event) + "\n")
 
     writer = write_event
+    active_rules = ()
     if args.mongo:
         from .storage import MongoEventWriter
+        from tokeneyezed.data.rules import load_active_rules
 
         if not os.environ.get("MONGODB_URI"):
             parser.error("--mongo requires MONGODB_URI in the service environment")
         writer = MongoEventWriter()
+        active_rules = load_active_rules()
 
     server = make_server(
-        PreGate(workspace, tuple(args.protect)),
+        PreGate(workspace, tuple(args.protect), rules=active_rules),
         os.environ.get("TOKENEYEZED_OBSERVER_TOKEN", ""),
         writer,
         args.port,

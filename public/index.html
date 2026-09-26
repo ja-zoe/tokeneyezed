@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tokeneyezed</title>
+    <script>
+      // Set the theme before first paint so dark mode doesn't flash white (same idea as AdminLTE's).
+      (() => {
+        let stored = null;
+        try { stored = localStorage.getItem('lte-theme'); } catch {}
+        const dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/styles/overlayscrollbars.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.9.1/dist/css/adminlte.min.css" />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+    <div class="app-wrapper">
+      <nav class="app-header navbar navbar-expand">
+        <div class="container-fluid">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button" aria-label="Toggle sidebar">
+                <i class="bi bi-list"></i>
+              </a>
+            </li>
+            <li class="nav-item d-none d-md-block"><span class="nav-link crumb" id="crumb"></span></li>
+          </ul>
+          <ul class="navbar-nav ms-auto align-items-center">
+            <li class="nav-item"><span class="live-pill" id="live-pill" hidden><i></i>Live</span></li>
+            <li class="nav-item">
+              <button class="btn btn-link nav-link" id="theme-toggle" type="button" aria-label="Switch light or dark">
+                <i class="bi bi-circle-half"></i>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <aside class="app-sidebar" data-bs-theme="dark">
+        <div class="sidebar-brand">
+          <a href="#/compare" class="brand-link"><span class="brand-text">Tokeneyezed</span></a>
+        </div>
+        <div class="sidebar-wrapper">
+          <nav class="mt-2">
+            <ul class="nav sidebar-menu flex-column" role="menu">
+              <li class="nav-item"><a href="#/live" class="nav-link" data-nav="live"><i class="nav-icon bi bi-broadcast"></i><p>Live</p></a></li>
+              <li class="nav-item"><a href="#/compare" class="nav-link" data-nav="compare"><i class="nav-icon bi bi-graph-up"></i><p>Compare</p></a></li>
+              <li class="nav-item"><a href="#/runs" class="nav-link" data-nav="runs"><i class="nav-icon bi bi-collection"></i><p>Runs</p></a></li>
+            </ul>
+          </nav>
+        </div>
+      </aside>
+
+      <main class="app-main">
+        <div class="app-content"><div class="container-fluid" id="view"></div></div>
+      </main>
+
+      <footer class="app-footer"><span>Read-only view of Atlas. Runs start from the CLI.</span></footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/browser/overlayscrollbars.browser.es6.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@4.9.1/dist/js/adminlte.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

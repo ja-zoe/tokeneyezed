@@ -22,7 +22,7 @@ Every command we should be able to run, who owns it, and whether it exists yet. 
 |---|---|---|
 | `python -m tokeneyezed.observer.service --workspace W --audit-log L --protect P [--port 8765]` | Start the observer service the hook shim talks to. Needs `TOKENEYEZED_OBSERVER_TOKEN`. Proposed alias: `tokeneyezed observe`. | ✅ (alias 📋) |
 | `tokeneyezed replay --session B-... --events runs/B/events.jsonl --workspace /absolute/task-repo [--protect /absolute/scorer]` | Replay neutral observer-event JSONL through the deterministic pre-gate and count what it would have caught. Read-only; evaluates pre-tool events only. | 🔨 reader implemented; baseline capture needs Gunjan |
-| `tokeneyezed rules learn` | Cluster flags into candidate rules and replay-test them (S1; first thing cut if behind). | 📋 |
+| `tokeneyezed rules learn [--min-support N] [--limit N]` | Cluster repeated blocked pre-tool inputs, replay candidates against blocked, allowed, and unlabeled events, and activate only rules with at least N blocked matches and zero allowed or unlabeled matches. Stores results in `rules`; the Mongo-backed observer loads active rules at startup. Run `db init` first. | 🔨 (needs `MONGODB_URI` and labeled event history) |
 
 ## Data (Aaron)
 
@@ -55,19 +55,28 @@ The data commands live in `data/commands.py` and are registered from `controller
 
 ## The day's runs
 
-Proven end to end on 2026-09-26 (real Claude, Codex, planner, scorer, observer, Atlas), in a throwaway database. Setup, once per machine:
+Proven end to end on 2026-09-26 (real Claude, Codex, planner, scorer, observer, Atlas). Each run (B, H, H-mem) gets **its own task workspace**; H and H-mem each get **their own observer** (one observer watches one workspace, on its own port).
 
-1. **Split** (harness side, outside any workspace), keeping a harness copy of visible for scoring:
-   `python -m tokeneyezed.eval.split --hidden-dir ~/tz/hidden --visible-dest ~/tz/agent/visible.json && cp ~/tz/agent/visible.json ~/tz/hidden/visible.json`
-2. **Task workspace**, one per run: `tokeneyezed workspace init ~/tz/ws-h --visible ~/tz/agent/visible.json`
-3. **`.env`**: `MONGODB_URI`, `OPENROUTER_API_KEY`, `VOYAGE_API_KEY`, `TOKENEYEZED_WORKSPACE` (the run's workspace), `TOKENEYEZED_HIDDEN_DIR=~/tz/hidden`, `TOKENEYEZED_OBSERVER_TOKEN` (any random string, shared with the observer).
-4. **Observer**, in its own pane, storing events in Atlas: `TOKENEYEZED_OBSERVER_TOKEN=... python -m tokeneyezed.observer.service --workspace ~/tz/ws-h --mongo --protect ~/tz/hidden`
+**Once:** the split, written harness-side (it also writes the scorer's copy of visible there):
 
-Then:
+    python -m tokeneyezed.eval.split --hidden-dir ~/tz/splits --visible-dest ~/tz/agent/visible.json --workspace ~/tz/agent
 
-5. `tokeneyezed baseline --config configs/b.toml` (📋 next).
-6. `tokeneyezed run --config configs/h.toml` and `tokeneyezed run --config configs/h-mem.toml`, each in its own pane, each with its own workspace.
-7. At any point, and at the end: `tokeneyezed heldout SESSION --workspace ~/tz/ws-h --heldout ~/tz/hidden/heldout.json` (idempotent).
+**Per run** (`ws-b`, `ws-h`, `ws-hmem`): `tokeneyezed workspace init ~/tz/ws-h --visible ~/tz/agent/visible.json`
+
+**`.env`** (shared): `MONGODB_URI`, `OPENROUTER_API_KEY`, `VOYAGE_API_KEY`, `TOKENEYEZED_SPLITS_DIR=~/tz/splits`, `TOKENEYEZED_OBSERVER_TOKEN` (any random string). **Per pane**: `TOKENEYEZED_WORKSPACE` (that run's workspace) and, for H and H-mem, `TOKENEYEZED_OBSERVER_URL` (that run's observer).
+
+**Observers** (H and H-mem), each in its own pane, storing events in Atlas:
+
+    uv run --env-file .env python -m tokeneyezed.observer.service --workspace ~/tz/ws-h --mongo --protect ~/tz/splits --port 8765
+    uv run --env-file .env python -m tokeneyezed.observer.service --workspace ~/tz/ws-hmem --mongo --protect ~/tz/splits --port 8766
+
+**Runs**, each in its own pane:
+
+    TOKENEYEZED_WORKSPACE=~/tz/ws-b tokeneyezed baseline --config configs/b.toml
+    TOKENEYEZED_WORKSPACE=~/tz/ws-h TOKENEYEZED_OBSERVER_URL=http://127.0.0.1:8765/event tokeneyezed run --config configs/h.toml
+    TOKENEYEZED_WORKSPACE=~/tz/ws-hmem TOKENEYEZED_OBSERVER_URL=http://127.0.0.1:8766/event tokeneyezed run --config configs/h-mem.toml
+
+**Held-out** (any time, idempotent; per session): `tokeneyezed heldout SESSION --workspace ~/tz/ws-h --heldout ~/tz/splits/heldout.json`
 
 ## The live demo, in order
 

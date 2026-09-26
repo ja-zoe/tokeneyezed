@@ -13,6 +13,7 @@ dependencies = [
 
 [project.scripts]
 tokeneyezed = "tokeneyezed.controller.cli:main"
+tokeneyezed-dashboard = "tokeneyezed.dashboard.server:main"
 
 [dependency-groups]
 dev = ["pytest", "ruff"]

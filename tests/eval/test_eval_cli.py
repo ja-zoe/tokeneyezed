@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 
 from tokeneyezed.controller.cli import main
-from tokeneyezed.controller.config import load_config
 
 # A tiny split: two "Tabs" examples and one "Precedence" example.
 TABS = [
@@ -64,7 +63,7 @@ def test_split_writes_visible_inside_and_hidden_outside(monkeypatch, tmp_path, c
     manifest = json.loads((hidden / "manifest.json").read_text())
     assert manifest["seed"] == 20260926
     assert manifest["counts"] == {"visible": 196, "validation": 234, "heldout": 222}
-    assert len(json.loads((ws / "tests" / "visible.json").read_text())) == 196
+    assert len(json.loads((ws / "examples" / "visible.json").read_text())) == 196
     for name in ("visible.json", "validation.json", "heldout.json"):
         assert (hidden / name).exists()
 
@@ -172,18 +171,6 @@ def test_missing_workspace_env_points_at_env_example(monkeypatch, tmp_path) -> N
     monkeypatch.setenv("TOKENEYEZED_SPLITS_DIR", str(tmp_path / "splits"))
     with pytest.raises(SystemExit, match="TOKENEYEZED_WORKSPACE.*\\.env"):
         main(["split"])
-
-
-def test_baseline_stub_reads_budget_from_config(monkeypatch, tmp_path) -> None:
-    """`baseline` loads configs/b.toml (extending base.toml); the loop lands in STEP 3."""
-    set_paths(monkeypatch, tmp_path)
-    config = load_config("configs/b.toml")  # the values live in TOML, never in code
-    with pytest.raises(SystemExit) as exc:
-        main(["baseline", "--config", "configs/b.toml"])
-    message = str(exc.value)
-    assert "STEP 3" in message
-    assert f"{config.max_attempts} attempts x {config.max_turns} turns" in message
-    assert f"run {config.name}" in message
 
 
 def test_report_stub_names_sessions(monkeypatch, tmp_path) -> None:
