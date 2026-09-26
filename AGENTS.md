@@ -25,7 +25,8 @@ Each workstream has its own package, so four people can work in parallel without
 | `src/tokeneyezed/eval/` | CommonMark split, scorer, baseline runner, `test_evals`, charts | Gunjan |
 
 - Nobody writes raw Mongo calls outside `data/`. Use Aaron's helpers (`insert_event`, `write_attempt`, ...) so the schema can't drift.
-- Contract changes (anything in `docs/contracts.md`) need a heads-up to the whole team, not a silent edit.
+- `src/tokeneyezed/ports.py` is shared, not owned by one workstream: it defines the interfaces every workstream implements or calls. Each port's contract test is in `tests/contracts/`; add your real implementation to its list there.
+- Contract changes (anything in `docs/contracts.md`, `src/tokeneyezed/ports.py`, or `tests/contracts/`) need a heads-up to the whole team, not a silent edit.
 
 ## Isolation rules (these protect the eval, don't break them)
 
@@ -46,7 +47,7 @@ These rules are catalogued in `tests/INVARIANTS.md` and checked by `tests/test_i
 - **Everything else goes on a branch.** That means code, tests, dependency changes, and contract changes. Name it `<workstream>/<short-kebab-description>`, where the workstream is `controller`, `data`, `observer`, or `eval` (for example `controller/attempt-runner`, `observer/pre-gate`). Cross-cutting work uses `shared/<description>`.
 - **Keep branches short-lived.** Merge small pieces often rather than one big branch at the end of the day.
 - **Sync at task boundaries, not mid-task.** At the start of each task and again before opening a PR: commit or stash, run `git fetch origin && git rebase origin/main`, then re-run `uv run pytest -rs`. Never pull into a dirty tree in the middle of a change.
-- **The session-start hook tells you when to sync.** `scripts/sync-check.sh` runs when a Claude Code or Codex session starts (`.claude/settings.json`, `.codex/hooks.json`). It fetches, never merges, and reports how far behind `main` you are and any diff to the shared contracts (`docs/contracts.md`, `tests/INVARIANTS.md`, `tests/contracts/`, `controller/ports.py`). If it reports contract changes, check your work against them before continuing. Verified in Claude Code. **Not yet working in Codex:** in a test, Codex 0.157.1 ran none of this project's hooks, so Codex users should run `scripts/sync-check.sh` by hand at task start until that's resolved.
+- **The session-start hook tells you when to sync.** `scripts/sync-check.sh` runs when a Claude Code or Codex session starts (`.claude/settings.json`, `.codex/hooks.json`). It fetches, never merges, and reports how far behind `main` you are and any diff to the shared contracts (`docs/contracts.md`, `tests/INVARIANTS.md`, `tests/contracts/`, `src/tokeneyezed/ports.py`). If it reports contract changes, check your work against them before continuing. Verified in Claude Code. **Not yet working in Codex:** in a test, Codex 0.157.1 ran none of this project's hooks, so Codex users should run `scripts/sync-check.sh` by hand at task start until that's resolved.
 - **CI is the gate.** `.github/workflows/ci.yml` runs ruff and pytest on every PR and on `main`. Don't merge a red PR.
 - **Merging:** open a PR and squash-merge it once CI is green. You may merge your own PR if it only touches your own package. If it touches another workstream's package, `docs/contracts.md`, or `tests/INVARIANTS.md`, get that owner's OK first.
 - **Never** force-push `main`, commit `.env` or other secrets, or commit run artifacts (`runs/` is gitignored).

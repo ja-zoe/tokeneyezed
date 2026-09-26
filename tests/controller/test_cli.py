@@ -15,7 +15,8 @@ def test_fake_run_completes(capsys):
         ]
     )
     assert code == 0
-    assert "cli-test: all goals complete" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "STARTED cli-test" in out and "cli-test ALL GOALS COMPLETE" in out
 
 
 def test_resume_refuses_without_real_ports(capsys):

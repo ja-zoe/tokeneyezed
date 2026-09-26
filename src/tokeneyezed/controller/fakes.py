@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from tokeneyezed.controller.ports import (
+from tokeneyezed.ports import (
     AttemptKilled,
     AttemptResult,
     Goal,

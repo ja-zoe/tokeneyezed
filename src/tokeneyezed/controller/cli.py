@@ -25,7 +25,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 from tokeneyezed.controller.config import RunConfig, load_config
 from tokeneyezed.controller.fakes import fake_ports
 from tokeneyezed.controller.graph import Context, build_graph, resume, start
-from tokeneyezed.controller.ports import AttemptKilled, Ports
+from tokeneyezed.controller.live import LiveFeed
+from tokeneyezed.ports import AttemptKilled, Ports
 
 CHECKPOINT_DB = "tokeneyezed"
 
@@ -55,24 +56,27 @@ def make_ports(config: RunConfig, fake: bool) -> Ports:
     return fake_ports(agent=config.agent)
 
 
-def _report(state: dict, session_id: str) -> None:
-    print(
-        f"{session_id}: {state.get('finished', 'stopped')} after {state['attempt_count']} attempts"
-    )
+def _finished(feed: LiveFeed, state: dict, session_id: str) -> None:
+    reason = state.get("finished", "stopped")
+    feed.banner(f"{session_id} {reason.upper()} after {state['attempt_count']} attempts", "bold")
 
 
 def cmd_run(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     session_id = args.session_id or f"{config.name}-{datetime.now(UTC):%m%d-%H%M%S}"
     ctx = Context(ports=make_ports(config, args.fake), config=config)
+    feed = LiveFeed(agent=config.agent)
     with open_checkpointer(args.checkpointer) as saver:
-        print(f"Starting {session_id} ({config.name}, agent {config.agent})")
+        feed.banner(
+            f"STARTED {session_id}  run {config.name}  agent {config.agent}  "
+            f"{len(config.sections)} goals  budget {config.max_attempts} attempts"
+        )
         try:
-            _report(start(build_graph(saver), ctx, session_id), session_id)
+            _finished(feed, start(build_graph(saver), ctx, session_id, feed), session_id)
         except (KeyboardInterrupt, AttemptKilled):
-            print(
-                f"\nKilled. Continue with: tokeneyezed resume {session_id} --config {args.config}"
-            )
+            feed.line()
+            feed.banner(f"KILLED during attempt #{feed.done + 1:03d}", "red")
+            feed.line(f"   resume: tokeneyezed resume {session_id} --config {args.config}")
             return 130
     return 0
 
@@ -82,12 +86,22 @@ def cmd_resume(args: argparse.Namespace) -> int:
     if args.agent:
         config = replace(config, agent=args.agent)
     ctx = Context(ports=make_ports(config, fake=False), config=config)
+    feed = LiveFeed(agent=config.agent)
+
     with open_checkpointer("mongo") as saver:
         graph = build_graph(saver)
         if not graph.get_state({"configurable": {"thread_id": args.session_id}}).values:
             sys.exit(f"No checkpoint for session {args.session_id}")
-        print(f"Resuming {args.session_id} with agent {config.agent}")
-        _report(resume(graph, ctx, args.session_id), args.session_id)
+        state = resume(
+            graph,
+            ctx,
+            args.session_id,
+            feed,
+            lambda killed, restored, nxt: feed.resumed(
+                args.session_id, config.agent, killed, restored, nxt
+            ),
+        )
+        _finished(feed, state, args.session_id)
     return 0
 
 

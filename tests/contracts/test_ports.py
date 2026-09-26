@@ -10,7 +10,7 @@ import os
 import pytest
 
 from tokeneyezed.controller import fakes
-from tokeneyezed.controller.ports import (
+from tokeneyezed.ports import (
     AttemptResult,
     AttemptRunner,
     BriefBuilder,

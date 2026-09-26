@@ -1,8 +1,8 @@
 """Ports: the seam between the controller and the other workstreams.
 
 Graph nodes call these interfaces and never import another workstream's code. Each port has a
-fake in `fakes.py` so the loop runs end to end before the real implementations exist, and a
-contract test in `tests/contracts/` that every implementation (fake or real) must pass.
+fake in `controller/fakes.py`, so the loop runs end to end before the real implementations exist,
+and a contract test in `tests/contracts/` that every implementation (fake or real) must pass.
 
 Owners implement the real versions: GoalStore, BriefBuilder, Ledger, Compactor (Aaron); Reviewer
 (Dharshan); Scorer (Gunjan); Planner, AttemptRunner (Julian). Changing a signature here is a

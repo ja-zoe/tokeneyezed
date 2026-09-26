@@ -13,7 +13,7 @@ from tokeneyezed.controller.fakes import (
     fake_ports,
 )
 from tokeneyezed.controller.graph import Context, build_graph, resume, start
-from tokeneyezed.controller.ports import AttemptKilled
+from tokeneyezed.ports import AttemptKilled
 
 BASE = replace(
     load_config("configs/h.toml"),

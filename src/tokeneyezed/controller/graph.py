@@ -8,6 +8,7 @@ which is not checkpointed: resuming a session with a different AttemptRunner is 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, TypedDict
 
@@ -17,7 +18,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
 
 from tokeneyezed.controller.config import RunConfig
-from tokeneyezed.controller.ports import AttemptResult, Goal, Ports, Score
+from tokeneyezed.ports import AttemptResult, Goal, Ports, Score
 
 NODES_PER_ATTEMPT = 9  # graph steps in one pass through the loop, for the recursion limit
 
@@ -232,19 +233,47 @@ def _run_config(session_id: str, config: RunConfig) -> dict:
     return {"configurable": {"thread_id": session_id}, "recursion_limit": limit}
 
 
-def start(graph: CompiledStateGraph, ctx: Context, session_id: str) -> State:
+OnUpdate = Callable[[str, dict[str, Any]], None]
+
+
+def _drive(
+    graph: CompiledStateGraph,
+    graph_input: State | None,
+    ctx: Context,
+    session_id: str,
+    on_update: OnUpdate | None,
+) -> State:
+    run_config = _run_config(session_id, ctx.config)
+    for chunk in graph.stream(graph_input, run_config, context=ctx, stream_mode="updates"):
+        for node, update in chunk.items():
+            if on_update:
+                on_update(node, update or {})
+    return graph.get_state(run_config).values
+
+
+def start(
+    graph: CompiledStateGraph, ctx: Context, session_id: str, on_update: OnUpdate | None = None
+) -> State:
     """Start a new session and run it until it finishes or the agent is killed."""
-    return graph.invoke(
-        {"session_id": session_id}, _run_config(session_id, ctx.config), context=ctx
-    )
+    return _drive(graph, {"session_id": session_id}, ctx, session_id, on_update)
 
 
-def resume(graph: CompiledStateGraph, ctx: Context, session_id: str) -> State:
+def resume(
+    graph: CompiledStateGraph,
+    ctx: Context,
+    session_id: str,
+    on_update: OnUpdate | None = None,
+    on_resumed: Callable[[list[str], State, tuple[str, ...]], None] | None = None,
+) -> State:
     """Continue a session from its latest checkpoint, possibly with a different runner.
 
     Any attempt still marked running was killed: record it so, and reset the workspace to the last
-    clean attempt's commit so its half-finished edits are gone.
+    clean attempt's commit so its half-finished edits are gone. on_resumed receives the killed
+    attempt ids, the restored state, and the next node(s) before the loop continues.
     """
-    ctx.ports.ledger.mark_running_as_killed(session_id)
+    killed = ctx.ports.ledger.mark_running_as_killed(session_id)
     ctx.ports.runner.reset_workspace(ctx.ports.ledger.last_clean_commit(session_id))
-    return graph.invoke(None, _run_config(session_id, ctx.config), context=ctx)
+    if on_resumed:
+        snapshot = graph.get_state(_run_config(session_id, ctx.config))
+        on_resumed(killed, snapshot.values, tuple(snapshot.next))
+    return _drive(graph, None, ctx, session_id, on_update)

@@ -25,7 +25,7 @@ review -+-> record_flagged -> pick_goal                        (gaming flagged: 
 
 **Budget counts every attempt, flagged ones included** (open question 3, decided here).
 
-### 2. Ports: the seam to the other workstreams (`controller/ports.py`)
+### 2. Ports: the seam to the other workstreams (`src/tokeneyezed/ports.py`)
 
 Nodes never import another workstream's code directly. They call **ports**, `typing.Protocol` interfaces passed in through LangGraph's runtime context (`Runtime[Context]`). The context is *not* checkpointed, which is what makes the Codex handoff free: resume the same checkpoint with a different `AttemptRunner` in the context.
 
@@ -62,6 +62,15 @@ Killing is Ctrl-C / SIGTERM on the `run` process; `resume` then picks it up. Thi
 
 **Run configs** live in `configs/` as TOML: `base.toml` holds what must be identical across runs (pinned model, attempt budget, per-attempt `max_turns`, failure threshold, workspace and hook paths), and `b.toml`, `h.toml`, `h-mem.toml` override only what differs (`memory = false` for H-mem). One base file is what makes invariant I7 checkable. The baseline and report commands belong to Gunjan (`eval/`) and are out of scope here; they read the same configs.
 
+### 5. Amendment (2026-09-26): the live demo is the interface
+
+The judges see a live demo, not a product pitch, so the interface is whatever reads best on a projector while the real run is already in progress. The H run starts around 1:30 and each attempt takes minutes, so the demo shows a run in flight, not one starting.
+
+- **`tokeneyezed run` prints a live feed** (`controller/live.py`) in a terminal pane that stays open all afternoon: one short block per attempt (number, agent, goal, intent, scores, verdict), printed when the attempt *starts* so a pane is never silent for minutes, plus loud markers for the beats we point at: `FLAGGED`, `REPLAN`, `GOAL COMPLETE`, `KILLED`.
+- **Codex handoff beat:** Ctrl-C shows `KILLED during attempt #N`; `tokeneyezed resume <id> --agent codex` shows a `RESUMED` banner with the state restored from Atlas (attempts done, killed attempt id, best score per goal) and restarts attempt #N on Codex. The banner is the proof; nobody has to wait for the attempt to finish.
+- **Replan beat:** show the `goals` document in the Atlas UI next to the feed's `REPLAN` line.
+- **Score chart and honeypot:** Gunjan's report produces the chart. For the honeypot beat, we should not count on the agent trying `pip install markdown-it-py` on cue during a 3-minute slot: plan a scripted short attempt whose brief asks for it, with the observer's block shown live (needs the runner to surface blocked tool calls; follow-up with Dharshan).
+
 ### Out of scope
 
 Real implementations of any port (including the real `claude -p` runner), the heartbeat watchdog, Codex runner, dashboard.
@@ -76,6 +85,7 @@ All in `tests/controller/`, using fakes and `InMemorySaver`:
 - [x] **Replan:** N consecutive non-improving attempts on a goal trigger exactly one `GoalStore.replan`.
 - [x] **Kill and resume on another agent:** a runner that raises mid-run simulates SIGTERM; resuming the same thread with a *different* fake runner continues from the last completed attempt (no attempt repeated, attempt numbering continues, the new attempts record the new agent).
 - [x] **Config:** `h.toml` and `h-mem.toml` resolve to the same model and budget (backs I7).
+- [x] **Live feed:** every demo beat appears in order across a kill and a resume on another agent (`tests/controller/test_live.py`).
 - [x] `uv run pytest -rs`, `uv run ruff check`, and `uv run ruff format --check` pass.
 
 Ship: PR from this branch, squash-merged after Julian approves.
