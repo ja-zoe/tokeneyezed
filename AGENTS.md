@@ -44,8 +44,11 @@ These rules are catalogued in `tests/INVARIANTS.md` and checked by `tests/test_i
 
 - **Straight to `main`:** small doc and plan updates (`docs/`, `README.md`, this file). Pull first, keep the commit focused, and say what changed in the message.
 - **Everything else goes on a branch.** That means code, tests, dependency changes, and contract changes. Name it `<workstream>/<short-kebab-description>`, where the workstream is `controller`, `data`, `observer`, or `eval` (for example `controller/attempt-runner`, `observer/pre-gate`). Cross-cutting work uses `shared/<description>`.
-- **Keep branches short-lived.** Merge small pieces often rather than one big branch at the end of the day. Rebase on or merge `main` before opening a PR.
-- **Merging:** open a PR and squash-merge it. Before merging, run `uv run pytest -rs` and `uv run ruff check` and make sure both pass. You may merge your own PR if it only touches your own package. If it touches another workstream's package, `docs/contracts.md`, or `tests/INVARIANTS.md`, get that owner's OK first.
+- **Keep branches short-lived.** Merge small pieces often rather than one big branch at the end of the day.
+- **Sync at task boundaries, not mid-task.** At the start of each task and again before opening a PR: commit or stash, run `git fetch origin && git rebase origin/main`, then re-run `uv run pytest -rs`. Never pull into a dirty tree in the middle of a change.
+- **The session-start hook tells you when to sync.** `scripts/sync-check.sh` runs when a Claude Code or Codex session starts (`.claude/settings.json`, `.codex/hooks.json`). It fetches, never merges, and reports how far behind `main` you are and any diff to the shared contracts (`docs/contracts.md`, `tests/INVARIANTS.md`, `tests/contracts/`, `controller/ports.py`). If it reports contract changes, check your work against them before continuing. Verified in Claude Code. **Not yet working in Codex:** in a test, Codex 0.157.1 ran none of this project's hooks, so Codex users should run `scripts/sync-check.sh` by hand at task start until that's resolved.
+- **CI is the gate.** `.github/workflows/ci.yml` runs ruff and pytest on every PR and on `main`. Don't merge a red PR.
+- **Merging:** open a PR and squash-merge it once CI is green. You may merge your own PR if it only touches your own package. If it touches another workstream's package, `docs/contracts.md`, or `tests/INVARIANTS.md`, get that owner's OK first.
 - **Never** force-push `main`, commit `.env` or other secrets, or commit run artifacts (`runs/` is gitignored).
 - Commit messages: imperative subject line ("Add pre-gate honeypot check"), with a body when the why isn't obvious.
 
