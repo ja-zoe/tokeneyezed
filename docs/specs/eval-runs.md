@@ -40,12 +40,12 @@ The baseline runner B (next, once this lands), the report and chart, and the fix
 
 ## Tests (the merge gate)
 
-- [ ] `workspace init` creates a git repo with the README contract, a stub that the scorer runs without error, the visible split, the self-test script, and the `.gitignore`; it refuses a directory inside the harness repo.
-- [ ] `SpecScorer` maps scorer output to `Score` (including `visible: None`), scores visible from the harness-side copy, and passes the `Scorer` contract test.
-- [ ] `heldout` scores each closed attempt at its own commit (proven with a renderer that improves across two commits), skips killed attempts and already-scored ones, leaves the workspace untouched, and writes only to `test_evals`.
-- [ ] I3 still holds: `test_evals` appears only under `eval/`.
-- [ ] `uv run pytest -rs`, `uv run ruff check`, `uv run ruff format --check` pass.
+- [x] `workspace init` creates a git repo with the README contract, a stub that the scorer runs without error, the visible split, the self-test script, and the `.gitignore`; it refuses a directory inside the harness repo.
+- [x] `SpecScorer` maps scorer output to `Score` (including `visible: None`), scores visible from the harness-side copy, and passes the `Scorer` contract test.
+- [x] `heldout` scores each closed attempt at its own commit (proven with a renderer that improves across two commits), skips killed attempts and already-scored ones, leaves the workspace untouched, and writes only to `test_evals`.
+- [x] I3 still holds: `test_evals` appears only under `eval/`.
+- [x] `uv run pytest -rs`, `uv run ruff check`, `uv run ruff format --check` pass.
 
-**Live check:** `workspace init` against the real spec split, `SpecScorer` on the stub (all zeros, no errors), and `heldout` on a two-attempt session in the smoke database.
+**Live check (done 2026-09-26, passed with the real scorer from #16):** `workspace init` against the real spec split, `SpecScorer` on the stub (all zeros, no errors), and `heldout` on a two-attempt session in the smoke database.
 
 Ship: PR from this branch, squash-merged after Julian approves.
