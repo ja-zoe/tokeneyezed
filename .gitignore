@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Run artifacts (attempt transcripts, hook logs)
+runs/
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
