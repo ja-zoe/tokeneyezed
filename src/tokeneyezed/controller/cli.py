@@ -4,6 +4,8 @@
     tokeneyezed resume ID --config configs/h.toml [--agent AGENT]
     tokeneyezed status ID
     tokeneyezed attempt --config configs/h.toml --intent "..." [--brief-file F]
+    tokeneyezed db init | check | backfill      (data/commands.py)
+    tokeneyezed eval retrieval SESSION_ID       (data/commands.py)
 
 Ctrl-C (or SIGTERM) kills a run; `resume` continues it from the latest checkpoint in Atlas.
 Until the real ports exist, `run --fake` runs the loop on in-memory fakes. `resume` needs the real,
@@ -182,6 +184,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     attempt.add_argument("--brief-file")
     attempt.add_argument("--session-id")
     attempt.set_defaults(func=cmd_attempt)
+
+    from tokeneyezed.data import commands as data_commands
+
+    data_commands.register(sub)  # db init|check|backfill, eval retrieval (docs/commands.md)
 
     args = parser.parse_args(argv)
     load_dotenv()
