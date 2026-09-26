@@ -263,6 +263,12 @@ def _rule_line(r: dict[str, Any]) -> str:
     return _clip(f"{r.get('check_type', '?')}: {r.get('pattern', '')}", MAX_ITEM_CHARS)
 
 
+def _goal_text(goal: Any) -> str:
+    """The spec section plus the goal's current strategy, if a replan has set one."""
+    notes = getattr(goal, "strategy_notes", "")
+    return f"{goal.section}\nCurrent strategy: {notes}" if notes else goal.section
+
+
 class MongoBriefBuilder:
     """The controller's BriefBuilder port (tokeneyezed/ports.py), backed by Atlas."""
 
@@ -275,7 +281,7 @@ class MongoBriefBuilder:
             session_id=session_id,
             goal_id=goal.goal_id,
             section=goal.section,
-            goal_text=goal.section,
+            goal_text=_goal_text(goal),
             use_memory=use_memory,
             db=self._db,
             embedder=self._embedder,

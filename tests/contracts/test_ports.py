@@ -14,10 +14,12 @@ from fake_claude import make_runner
 from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller import fakes
+from tokeneyezed.controller.planner import OpenRouterPlanner
 from tokeneyezed.data.brief import MongoBriefBuilder
 from tokeneyezed.data.compactor import MongoCompactor
 from tokeneyezed.data.ledger import MongoLedger
 from tokeneyezed.observer.reviewer import GamingReviewer
+from tokeneyezed.openrouter import OpenRouterClient
 from tokeneyezed.ports import (
     AttemptResult,
     AttemptRunner,
@@ -46,7 +48,18 @@ def mongo_brief_builder() -> MongoBriefBuilder:
 
 
 BRIEF_BUILDERS = [fakes.FakeBriefBuilder, mongo_brief_builder]
-PLANNERS = [fakes.FakePlanner]
+
+
+def openrouter_planner_on_fake_transport():
+    reply = '{"intent": "Handle tabs per spec 2.2.", "strategy": "Expand tabs first."}'
+    client = OpenRouterClient(
+        transport=lambda payload, key: {"choices": [{"message": {"content": reply}}]},
+        api_key="contract-test",
+    )
+    return OpenRouterPlanner(model="m", client=client)
+
+
+PLANNERS = [fakes.FakePlanner, openrouter_planner_on_fake_transport]
 
 
 def claude_runner_on_fake_binary():
@@ -102,6 +115,18 @@ def test_goal_store(make):
     assert store.next_open("other-session") is None  # sessions are isolated
 
 
+@pytest.mark.parametrize("make", GOAL_STORES)
+def test_goal_store_replan_note_is_the_current_strategy(make):
+    store = make()
+    store.seed("r", ["Tabs"], 0.85)
+    goal = store.next_open("r")
+    assert goal.strategy_notes == ""
+    store.replan(goal.goal_id, "expand tabs before block parsing")
+    again = store.next_open("r")
+    assert again.goal_id == goal.goal_id  # the only goal, so this always checks
+    assert again.strategy_notes == "expand tabs before block parsing"
+
+
 @pytest.mark.parametrize("make", BRIEF_BUILDERS)
 @pytest.mark.parametrize("use_memory", [True, False])
 def test_brief_builder(make, use_memory):
@@ -117,6 +142,8 @@ def test_planner(make):
     assert isinstance(planner, Planner)
     intent = planner.plan(GOAL, "brief")
     assert isinstance(intent, str) and intent
+    strategy = planner.replan(GOAL, "brief")
+    assert isinstance(strategy, str) and strategy
 
 
 @pytest.mark.parametrize("make", RUNNERS)

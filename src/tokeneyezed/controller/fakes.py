@@ -45,10 +45,16 @@ class InMemoryGoalStore:
         if not open_goals:
             return None
         _, goal_id, g = min(open_goals)
-        return Goal(goal_id=goal_id, section=g["section"], target_val_pass=g["target"])
+        return Goal(
+            goal_id=goal_id,
+            section=g["section"],
+            target_val_pass=g["target"],
+            strategy_notes=g.get("strategy", ""),
+        )
 
     def replan(self, goal_id: str, note: str) -> None:
         self.replans.append((goal_id, note))
+        self.goals[goal_id]["strategy"] = note
 
     def complete(self, goal_id: str) -> None:
         self.goals[goal_id]["status"] = "complete"
@@ -63,9 +69,16 @@ class FakeBriefBuilder:
         return f"Work on {goal.section}. Memory {'on' if use_memory else 'off'}."
 
 
+@dataclass
 class FakePlanner:
+    seen: list[Goal] = field(default_factory=list)  # the goals plan() was called with
+
     def plan(self, goal: Goal, brief: str) -> str:
+        self.seen.append(goal)
         return f"Improve {goal.section}"
+
+    def replan(self, goal: Goal, brief: str) -> str:
+        return f"Try a different approach for {goal.section}"
 
 
 @dataclass

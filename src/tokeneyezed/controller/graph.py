@@ -43,6 +43,7 @@ class State(TypedDict, total=False):
     last_clean: dict[str, dict[str, Any]]  # goal_id -> {"attempt_id", "score"}
     streaks: dict[str, int]  # goal_id -> consecutive clean attempts without improvement
     finished: str  # why the run ended
+    strategy: str  # the latest replan's strategy (for the live feed)
 
 
 def _goal(state: State) -> Goal:
@@ -177,12 +178,13 @@ def complete_goal(state: State, runtime: Runtime[Context]) -> dict:
 
 
 def replan(state: State, runtime: Runtime[Context]) -> dict:
-    goal = _goal(state)
-    streak, best = state["streaks"][goal.goal_id], state["best_val"][goal.goal_id]
-    runtime.context.ports.goals.replan(
-        goal.goal_id, f"{streak} attempts without improvement; best validation {best:.2f}"
-    )
-    return {"streaks": {**state["streaks"], goal.goal_id: 0}}
+    # The planner writes the new strategy from a fresh brief (which shows what just failed); the
+    # goal store keeps it, and the next pick_goal hands it to the brief and the planner.
+    ports, goal = runtime.context.ports, _goal(state)
+    brief = ports.brief.build(state["session_id"], goal, use_memory=runtime.context.config.memory)
+    strategy = ports.planner.replan(goal, brief)
+    ports.goals.replan(goal.goal_id, strategy)
+    return {"streaks": {**state["streaks"], goal.goal_id: 0}, "strategy": strategy}
 
 
 def compact(state: State, runtime: Runtime[Context]) -> dict:

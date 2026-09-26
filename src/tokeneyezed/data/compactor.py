@@ -25,8 +25,6 @@ from __future__ import annotations
 import json
 import os
 import time
-import urllib.error
-import urllib.request
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -37,8 +35,8 @@ from pymongo.database import Database
 from tokeneyezed.data.db import get_db
 from tokeneyezed.data.embeddings import Embedder, get_embedder
 from tokeneyezed.data.writes import FLAGGED_OUTCOME
+from tokeneyezed.openrouter import OpenRouterClient, OpenRouterError, Transport, http_post
 
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = "anthropic/claude-haiku-4.5"  # small and cheap; override with COMPACTOR_MODEL
 DEFAULT_MIN_ATTEMPTS = 3  # wait for this many uncompacted attempts before writing a summary
 DEFAULT_MAX_ATTEMPTS = 6  # attempts per summary; a longer backlog is compacted over several calls
@@ -88,68 +86,30 @@ def attempt_facts(attempts: Sequence[Mapping[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def _http_post(payload: dict[str, Any], key: str) -> dict[str, Any]:
-    request = urllib.request.Request(
-        OPENROUTER_URL,
-        data=json.dumps(payload).encode(),
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        return json.load(response)
-
-
 class OpenRouterSummarizer:
-    """Summarizes attempts with one small-model call through OpenRouter."""
+    """Summarizes attempts with one small-model call through the shared OpenRouter client."""
 
     def __init__(
         self,
         model: str | None = None,
-        transport: Callable[[dict[str, Any], str], dict[str, Any]] = _http_post,
+        transport: Transport = http_post,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.model = model or os.environ.get("COMPACTOR_MODEL") or DEFAULT_MODEL
-        self._transport = transport
-        self._sleep = sleep
+        self._client = OpenRouterClient(transport=transport, sleep=sleep, max_retries=MAX_RETRIES)
 
     def summarize(self, attempts: Sequence[Mapping[str, Any]]) -> str:
-        key = os.environ.get("OPENROUTER_API_KEY")
-        if not key:
-            raise SummarizerError("OPENROUTER_API_KEY is not set")
-        payload = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 300,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": attempt_facts(attempts)},
-            ],
-        }
-        for attempt in range(MAX_RETRIES + 1):
-            try:
-                body = self._transport(payload, key)
-            except urllib.error.HTTPError as err:
-                if err.code != 429 and err.code < 500:
-                    raise SummarizerError(
-                        f"OpenRouter rejected the request: HTTP {err.code}"
-                    ) from err
-            except (urllib.error.URLError, TimeoutError):
-                pass
-            else:
-                return self._parse(body)
-            if attempt < MAX_RETRIES:
-                self._sleep(2**attempt)
-        raise SummarizerError(f"OpenRouter still failing after {MAX_RETRIES} retries")
-
-    @staticmethod
-    def _parse(body: Any) -> str:
         try:
-            content = body["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as err:
-            raise SummarizerError(f"malformed OpenRouter response: {err!r}") from err
-        if not isinstance(content, str) or not content.strip():
-            raise SummarizerError("the model returned an empty summary")
-        return content
+            return self._client.chat(
+                model=self.model,
+                max_tokens=300,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": attempt_facts(attempts)},
+                ],
+            )
+        except OpenRouterError as err:
+            raise SummarizerError(str(err)) from err
 
 
 @dataclass(frozen=True)
