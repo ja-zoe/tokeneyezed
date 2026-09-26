@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 from tokeneyezed.controller.config import load_config
-from tokeneyezed.eval import scorer, split
+from tokeneyezed.eval import baseline, scorer, split
 
 DEFAULT_SPLITS_DIR = "~/.tokeneyezed/splits"
 
@@ -91,7 +91,7 @@ def cmd_split(args: argparse.Namespace) -> int:
             "--hidden-dir",
             str(hidden),
             "--visible-dest",
-            str(ws / "tests" / "visible.json"),
+            str(ws / "examples" / "visible.json"),
             "--workspace",
             str(ws),
             "--seed",
@@ -129,13 +129,23 @@ def cmd_score(args: argparse.Namespace) -> int:
 
 
 def cmd_baseline(args: argparse.Namespace) -> int:
-    """Run B, the naive retry loop. Loads the run config now; the loop itself is STEP 3."""
+    """Run B, the naive retry loop over the task workspace (STEP 3, eval/baseline.py)."""
     config = load_config(args.config)
-    sys.exit(
-        f"the baseline loop isn't built yet (STEP 3); run {config.name} would use agent "
-        f"{config.agent}, {config.max_attempts} attempts x {config.max_turns} turns "
-        f"(from {args.config} extending base.toml)"
+    ws = workspace_dir().resolve()
+    hidden = splits_dir().resolve()
+    hint = "run `tokeneyezed split` first"
+    _require(hidden / "visible.json", hint)  # the harness-side copy the scorer reads
+    _require(hidden / "validation.json", hint)
+    if not (ws / "PROMPT.md").exists() and not (ws / "README.md").exists():
+        sys.exit(f"{ws} has no PROMPT.md or README.md — run `tokeneyezed workspace init` first")
+    paths = baseline.BaselinePaths(
+        workspace=ws,
+        splits_dir=hidden,
+        runs_dir=_env_path("TOKENEYEZED_RUNS_DIR", "~/.tokeneyezed/runs"),
+        config_dir=_env_path("TOKENEYEZED_CLAUDE_CONFIG_DIR", "~/.claude-tokeneyezed"),
     )
+    baseline.run_baseline(config, paths, session_id=args.session_id)
+    return 0
 
 
 def cmd_report(args: argparse.Namespace) -> int:
@@ -169,6 +179,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
     base = subparsers.add_parser("baseline", help="run B: the naive retry loop, no observer")
     base.add_argument("--config", required=True, help="run config, e.g. configs/b.toml")
+    base.add_argument("--session-id", help="session id (default: <name>-<timestamp>)")
     base.set_defaults(func=cmd_baseline)
 
     rep = subparsers.add_parser("report", help="final numbers + score chart at equal attempts")
