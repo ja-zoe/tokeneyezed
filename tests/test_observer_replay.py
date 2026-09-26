@@ -34,9 +34,7 @@ def test_replay_counts_only_pre_events_for_selected_session(tmp_path):
     assert report.pre_events == 2
     assert report.would_allow == 1
     assert report.would_block == 1
-    assert report.block_reasons == {
-        "honeypot: existing Markdown implementations are forbidden": 1
-    }
+    assert report.block_reasons == {"honeypot: existing Markdown implementations are forbidden": 1}
     assert events[2]["verdict"] == "observed"
 
 
@@ -79,17 +77,20 @@ def test_replay_cli_prints_summary_and_reasons(tmp_path, capsys):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
-    assert main(
-        [
-            "replay",
-            "--session",
-            "B-1",
-            "--events",
-            str(events),
-            "--workspace",
-            str(workspace),
-        ]
-    ) == 0
+    assert (
+        main(
+            [
+                "replay",
+                "--session",
+                "B-1",
+                "--events",
+                str(events),
+                "--workspace",
+                str(workspace),
+            ]
+        )
+        == 0
+    )
     output = capsys.readouterr().out
     assert "would block      1" in output
     assert "honeypot: existing Markdown implementations are forbidden" in output
