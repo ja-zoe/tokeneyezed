@@ -65,6 +65,10 @@ class CodexRunner(HeadlessRunner):
         cmd = [self.codex_bin, "exec", "--json", "--ephemeral", "--skip-git-repo-check"]
         cmd += ["--cd", str(self.paths.workspace), "--model", self.model]
         cmd += ["--disable", "code_mode"]  # its JS exec tool runs commands where hooks can't see
+        # A clean agent: without these, the account's ChatGPT apps attach as tools (in testing:
+        # financial-account and deployment tools), and Codex keeps memories outside the harness.
+        cmd += ["--disable", "apps", "--disable", "memories", "--disable", "plugins"]
+        cmd += ["-c", 'web_search="disabled"']  # it could fetch an existing implementation
         cmd += ["--dangerously-bypass-approvals-and-sandbox"]  # no usable sandbox; see docstring
         cmd += ["--dangerously-bypass-hook-trust", *self.hook_overrides()]
         return [*cmd, prompt]

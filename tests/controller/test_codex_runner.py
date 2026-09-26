@@ -41,15 +41,17 @@ def test_command_and_environment(runner, tmp_path, monkeypatch):
 
     assert argv[:1] == ["exec"] and "Add a renderer" in argv[-1]
     assert {"--json", "--ephemeral", "--dangerously-bypass-hook-trust"} <= set(argv)
-    assert argv[argv.index("--disable") + 1] == "code_mode"
+    disabled = {argv[i + 1] for i, a in enumerate(argv) if a == "--disable"}
+    assert {"code_mode", "apps", "memories", "plugins"} <= disabled
     assert argv[argv.index("--model") + 1] == "test-codex-model"
     assert argv[argv.index("--cd") + 1] == str(runner.paths.workspace)
 
     # Each hook override must parse as TOML and point at the shim, or the observer is silently off.
-    overrides = [argv[i + 1] for i, a in enumerate(argv) if a == "-c"]
+    overrides = [tomllib.loads(argv[i + 1]) for i, a in enumerate(argv) if a == "-c"]
+    assert {"web_search": "disabled"} in overrides
     hooks = {}
     for override in overrides:
-        hooks.update(tomllib.loads(override)["hooks"])
+        hooks.update(override.get("hooks", {}))
     assert set(hooks) == {"PreToolUse", "PostToolUse", "Stop"}
     for groups in hooks.values():
         assert groups[0]["hooks"][0] == {"type": "command", "command": runner.shim_command()}
