@@ -28,8 +28,21 @@ Service, malformed-response, and audit-write failures block pre calls. Post/stop
 failures allow execution and spool the event for backfill; spool failures emit a diagnostic.
 Use separate spool files per hook process if your runner launches hooks concurrently.
 
-`make_server(gate, token, insert_event)` accepts Aaron's eventual storage helper.
-The CLI currently uses a local JSONL audit writer. No Mongo calls are made here.
+`make_server(gate, token, writer)` accepts `MongoEventWriter`, which calls Aaron's
+`data.writes.insert_event` helper and converts the event timestamp to a UTC datetime.
+Use `--mongo` instead of `--audit-log` for Atlas storage. Export `MONGODB_URI` and
+optionally `TOKENEYEZED_DB` in the service environment; the service does not load
+an agent workspace's `.env`. Mongo writes have a two-second deadline, shorter than
+the shim timeout. Storage failures return HTTP 503 and trigger the shim's existing
+phase-specific outage policy and spool. Do not give the database URI to the agent.
+
+```text
+python -m tokeneyezed.observer.service --workspace /absolute/task-repo --mongo --protect /absolute/scorer
+```
+
+The subprocess integration test exercises shim stdin/exit codes, HTTP, the real
+data writer, and a fake database, including storage outages. It is not a live
+Atlas or coding-agent admission test.
 
 ## Scope and verification
 
@@ -49,7 +62,7 @@ pass the repository's admission test. The core accepts normalized patch targets
 for a future adapter.
 
 Still to build: post-checks, source-based gaming review, learned-rule replay/loading,
-Mongo writer wiring, and real-agent smoke tests. The shared contracts remain draft;
+real-agent smoke tests. The shared contracts remain draft;
 this module does not change them.
 
 ## Reviewer port
