@@ -1,5 +1,7 @@
 """The shared OpenRouter client, on a fake transport (no network)."""
 
+import http.client
+import json
 import urllib.error
 
 import pytest
@@ -91,3 +93,38 @@ def test_missing_key(monkeypatch):
     with pytest.raises(OpenRouterError, match="OPENROUTER_API_KEY"):
         OpenRouterClient(transport=transport).chat(model="m", messages=[], max_tokens=5)
     assert calls == []
+
+
+UNWRAPPED = [
+    ConnectionResetError("peer dropped the connection"),  # raised by getresponse(), not URLError
+    http.client.IncompleteRead(b"partial"),
+    json.JSONDecodeError("Expecting value", "<html>", 0),  # a non-JSON 200 body
+]
+
+
+@pytest.mark.parametrize("error", UNWRAPPED)
+def test_unwrapped_network_errors_are_retried(error):
+    transport, calls = scripted(error, body("ok"))
+    client = OpenRouterClient(transport=transport, sleep=lambda s: None)
+    assert client.chat(model="m", messages=[], max_tokens=5) == "ok" and len(calls) == 2
+
+
+@pytest.mark.parametrize("error", UNWRAPPED)
+def test_only_openrouter_error_escapes_when_they_never_clear(error):
+    # Regression: these used to escape as-is, past the planner's fail-open and the compactor.
+    transport, _ = scripted(error)
+    client = OpenRouterClient(transport=transport, sleep=lambda s: None, max_retries=1)
+    with pytest.raises(OpenRouterError):
+        client.chat(model="m", messages=[], max_tokens=5)
+
+
+def test_planner_falls_back_instead_of_crashing_on_a_dropped_connection():
+    from tokeneyezed.controller.planner import OpenRouterPlanner
+    from tokeneyezed.ports import Goal
+
+    transport, _ = scripted(ConnectionResetError("peer dropped the connection"))
+    client = OpenRouterClient(transport=transport, sleep=lambda s: None, max_retries=1)
+    planner = OpenRouterPlanner(model="m", client=client)
+    goal = Goal(goal_id="s:Tabs", section="Tabs", target_val_pass=0.85)
+    assert "Tabs" in planner.plan(goal, "brief")
+    assert "Tabs" in planner.replan(goal, "brief")

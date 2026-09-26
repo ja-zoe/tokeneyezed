@@ -14,6 +14,7 @@ loop is never blocked on embeddings.
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import random
@@ -216,9 +217,15 @@ class Embedder:
                     raise EmbeddingError(f"Voyage rejected the request: HTTP {err.code}") from err
                 self._backoff(attempt, err.headers.get("Retry-After") if err.headers else None)
                 continue
-            except (urllib.error.URLError, TimeoutError):
+            except (OSError, http.client.HTTPException, ValueError):
+                # urllib wraps only some failures in URLError: a dropped connection surfaces as
+                # ConnectionResetError, a truncated reply as HTTPException, a non-JSON body as
+                # JSONDecodeError. Retry them all.
                 self._backoff(attempt, None)
                 continue
+            except BaseException:
+                self._budget.settle(estimate, 0)  # never charge the budget for a failed call
+                raise
             return self._parse(body, len(batch), estimate)
         self._budget.settle(estimate, 0)
         raise EmbeddingError(f"Voyage still failing after {MAX_RETRIES} retries")
