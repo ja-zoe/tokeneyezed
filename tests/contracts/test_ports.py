@@ -6,8 +6,11 @@ without credentials (and CI still runs the fakes).
 """
 
 import os
+import tempfile
+from pathlib import Path
 
 import pytest
+from fake_claude import make_runner
 from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller import fakes
@@ -44,7 +47,13 @@ def mongo_brief_builder() -> MongoBriefBuilder:
 
 BRIEF_BUILDERS = [fakes.FakeBriefBuilder, mongo_brief_builder]
 PLANNERS = [fakes.FakePlanner]
-RUNNERS = [fakes.FakeRunner]
+
+
+def claude_runner_on_fake_binary():
+    return make_runner(Path(tempfile.mkdtemp()))
+
+
+RUNNERS = [fakes.FakeRunner, claude_runner_on_fake_binary]
 SCORERS = [fakes.ScriptedScorer]
 REVIEWERS = [fakes.FakeReviewer, GamingReviewer]
 

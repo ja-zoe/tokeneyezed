@@ -3,6 +3,7 @@
     tokeneyezed run --config configs/h.toml [--session-id ID] [--fake] [--checkpointer memory]
     tokeneyezed resume ID --config configs/h.toml [--agent codex]
     tokeneyezed status ID
+    tokeneyezed attempt --config configs/h.toml --intent "..." [--brief-file F]
 
 Ctrl-C (or SIGTERM) kills a run; `resume` continues it from the latest checkpoint in Atlas.
 Until the real ports exist, `run --fake` runs the loop on in-memory fakes. `resume` needs the real,
@@ -13,12 +14,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import signal
 import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
 
+from dotenv import load_dotenv
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -105,6 +108,34 @@ def cmd_resume(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_attempt(args: argparse.Namespace) -> int:
+    """One real attempt, nothing else: smoke-tests the runner and runs the honeypot beat."""
+    from tokeneyezed.controller.runners import claude_runner_from_env
+
+    config = load_config(args.config)
+    runner = claude_runner_from_env(config)
+    brief = open(args.brief_file).read() if args.brief_file else ""
+    session_id = args.session_id or f"attempt-{datetime.now(UTC):%m%d-%H%M%S}"
+    attempt_id = f"{session_id}-001"
+    feed = LiveFeed(agent=runner.agent)
+    feed.banner(f"ATTEMPT {attempt_id}  agent {runner.agent}  workspace {runner.paths.workspace}")
+    feed.section = "single attempt"
+    feed.on_plan_attempt({"intent": args.intent})
+    try:
+        result = runner.run(
+            session_id=session_id, attempt_id=attempt_id, brief=brief, intent=args.intent
+        )
+    except AttemptKilled:
+        feed.banner("KILLED", "red")
+        return 130
+    feed.blocked(result.blocked)
+    feed.line(f"      commit  {result.commit[:10]}  (agent exit code {result.exit_code})")
+    for line in result.diff_summary.splitlines():
+        feed.line(f"              {line}")
+    feed.line(f"      transcript  {runner.paths.runs_dir / session_id / (attempt_id + '.jsonl')}")
+    return 0
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     with open_checkpointer("mongo") as saver:
         snapshot = build_graph(saver).get_state({"configurable": {"thread_id": args.session_id}})
@@ -143,7 +174,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     status.add_argument("session_id")
     status.set_defaults(func=cmd_status)
 
+    attempt = sub.add_parser("attempt", help="run one real attempt with the real runner")
+    attempt.add_argument("--config", required=True)
+    attempt.add_argument("--intent", required=True)
+    attempt.add_argument("--brief-file")
+    attempt.add_argument("--session-id")
+    attempt.set_defaults(func=cmd_attempt)
+
     args = parser.parse_args(argv)
+    load_dotenv()
+    # SIGTERM gets the same cleanup as Ctrl-C: the runner stops the agent's process group, which
+    # would otherwise outlive the controller.
+    signal.signal(signal.SIGTERM, signal.default_int_handler)
     return args.func(args)
 
 

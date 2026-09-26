@@ -25,6 +25,8 @@ class RunConfig:
     max_turns: int
     failure_threshold: int
     target_val_pass: float
+    timebox_minutes: int
+    allowed_tools: tuple[str, ...]
     sections: tuple[str, ...]
 
 
@@ -43,4 +45,5 @@ def load_config(path: str | Path) -> RunConfig:
     merged = {**base, **run}
     merged.pop("extends", None)
     merged["sections"] = tuple(merged["sections"])
+    merged["allowed_tools"] = tuple(merged["allowed_tools"])
     return RunConfig(**merged)

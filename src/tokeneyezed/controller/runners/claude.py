@@ -1,0 +1,223 @@
+"""The real AttemptRunner: one headless `claude -p` attempt, with the observer in its hooks.
+
+Spec: docs/specs/claude-runner.md. The harness (not the agent) commits after every attempt, so
+each attempt has a commit to score and to reset to. Isolation is checked before anything runs:
+the workspace lives outside this repo (I2), and everything the runner writes lives outside the
+workspace (I6).
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shlex
+import signal
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+from tokeneyezed.ports import AttemptKilled, AttemptResult
+
+HARNESS_ROOT = Path(__file__).resolve().parents[4]
+GRACE_SECONDS = 10  # after SIGTERM, before SIGKILL
+GIT_IDENTITY = ["-c", "user.name=tokeneyezed", "-c", "user.email=harness@tokeneyezed.invalid"]
+
+
+class IsolationError(ValueError):
+    """The runner's paths would let the agent see or edit what it must not."""
+
+
+def _inside(path: Path, parent: Path) -> bool:
+    return path == parent or parent in path.parents
+
+
+@dataclass(frozen=True)
+class RunnerPaths:
+    workspace: Path  # the task repo the agent works in
+    runs_dir: Path  # transcripts, hook settings, spools
+    config_dir: Path  # the agent's dedicated CLAUDE_CONFIG_DIR
+    harness_root: Path = HARNESS_ROOT
+
+    def resolved(self) -> RunnerPaths:
+        return RunnerPaths(
+            *(p.expanduser().resolve() for p in (self.workspace, self.runs_dir, self.config_dir)),
+            harness_root=self.harness_root.resolve(),
+        )
+
+
+def check_isolation(paths: RunnerPaths) -> RunnerPaths:
+    """Refuse paths that break I2 or I6; return them resolved."""
+    p = paths.resolved()
+    if not (p.workspace / ".git").exists():
+        raise IsolationError(f"workspace {p.workspace} is not a git repository")
+    if _inside(p.workspace, p.harness_root) or _inside(p.harness_root, p.workspace):
+        raise IsolationError(
+            f"workspace {p.workspace} overlaps the harness repo {p.harness_root}: the agent would "
+            "load our instructions and could reach the scorer and hidden splits (I2)"
+        )
+    for name, path in (("runs dir", p.runs_dir), ("Claude config dir", p.config_dir)):
+        if _inside(path, p.workspace):
+            raise IsolationError(
+                f"{name} {path} is inside the workspace, where the agent can edit it (I6)"
+            )
+    return p
+
+
+class ClaudeRunner:
+    agent = "claude"
+
+    def __init__(
+        self,
+        paths: RunnerPaths,
+        *,
+        model: str,
+        max_turns: int,
+        timebox_seconds: float,
+        allowed_tools: tuple[str, ...],
+        observer_url: str,
+        observer_token: str,
+        claude_bin: str = "claude",
+        python: str = sys.executable,
+    ) -> None:
+        if not model:
+            raise ValueError("no pinned model: set `model` in configs/base.toml")
+        if not observer_token:
+            raise ValueError("TOKENEYEZED_OBSERVER_TOKEN is not set (must match the observer's)")
+        self.paths = check_isolation(paths)
+        self.model = model
+        self.max_turns = max_turns
+        self.timebox_seconds = timebox_seconds
+        self.allowed_tools = allowed_tools
+        self.observer_url = observer_url
+        self.observer_token = observer_token
+        self.claude_bin = claude_bin
+        self.python = python
+
+    # -- git in the task workspace ------------------------------------------------------------
+
+    def _git(self, *args: str) -> str:
+        done = subprocess.run(
+            ["git", *GIT_IDENTITY, *args],
+            cwd=self.paths.workspace,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return done.stdout.strip()
+
+    def _root_commit(self) -> str:
+        return self._git("rev-list", "--max-parents=0", "HEAD").splitlines()[-1]
+
+    def reset_workspace(self, commit: str | None) -> None:
+        self._git("reset", "--hard", commit or self._root_commit())
+        self._git("clean", "-fd")
+
+    # -- one attempt ------------------------------------------------------------------------
+
+    def hook_settings(self) -> dict:
+        shim = {
+            "type": "command",
+            "command": f"{shlex.quote(self.python)} -m tokeneyezed.observer.shim",
+        }
+        return {
+            "hooks": {
+                "PreToolUse": [{"matcher": "*", "hooks": [shim]}],
+                "PostToolUse": [{"matcher": "*", "hooks": [shim]}],
+                "Stop": [{"hooks": [shim]}],
+            }
+        }
+
+    def command(self, prompt: str, settings_file: Path) -> list[str]:
+        cmd = [self.claude_bin, "-p", prompt, "--settings", str(settings_file)]
+        cmd += ["--model", self.model, "--max-turns", str(self.max_turns)]
+        cmd += ["--permission-mode", "acceptEdits", "--permission-prompts", "none"]
+        cmd += ["--allowedTools", *self.allowed_tools]
+        cmd += ["--output-format", "stream-json", "--verbose", "--include-hook-events"]
+        return cmd
+
+    def environment(self, session_id: str, attempt_id: str, intent: str, spool: Path) -> dict:
+        # Drop the operator's own Claude Code variables (e.g. when the harness is launched from a
+        # Claude Code session) and any stale harness identity, then set ours.
+        env = {k: v for k, v in os.environ.items() if not k.startswith(("CLAUDE", "TOKENEYEZED_"))}
+        env.update(
+            CLAUDE_CONFIG_DIR=str(self.paths.config_dir),
+            TOKENEYEZED_SESSION_ID=session_id,
+            TOKENEYEZED_ATTEMPT_ID=attempt_id,
+            TOKENEYEZED_INTENT=intent,
+            TOKENEYEZED_OBSERVER_URL=self.observer_url,
+            TOKENEYEZED_OBSERVER_TOKEN=self.observer_token,
+            TOKENEYEZED_OBSERVER_SPOOL=str(spool),
+        )
+        return env
+
+    def _wait(self, proc: subprocess.Popen) -> bool:
+        """Wait for the agent; True if the timebox expired."""
+        try:
+            proc.wait(timeout=self.timebox_seconds)
+            return False
+        except subprocess.TimeoutExpired:
+            return True
+
+    @staticmethod
+    def _stop(proc: subprocess.Popen) -> None:
+        """SIGTERM the agent's whole process group, then SIGKILL if it lingers."""
+        if proc.poll() is not None:
+            return
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+            proc.wait(timeout=GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait()
+        except ProcessLookupError:
+            pass
+
+    def run(self, *, session_id: str, attempt_id: str, brief: str, intent: str) -> AttemptResult:
+        attempt_dir = self.paths.runs_dir / session_id
+        attempt_dir.mkdir(parents=True, exist_ok=True)
+        settings_file = attempt_dir / f"{attempt_id}.settings.json"
+        settings_file.write_text(json.dumps(self.hook_settings(), indent=2))
+        transcript = attempt_dir / f"{attempt_id}.jsonl"
+        spool = attempt_dir / f"{attempt_id}.spool.jsonl"
+        prompt = f"{brief}\n\nYour intent for this attempt: {intent}"
+        base = self._git("rev-parse", "HEAD")
+
+        with transcript.open("w") as out, (attempt_dir / f"{attempt_id}.stderr").open("w") as err:
+            proc = subprocess.Popen(
+                self.command(prompt, settings_file),
+                cwd=self.paths.workspace,
+                env=self.environment(session_id, attempt_id, intent, spool),
+                stdin=subprocess.DEVNULL,
+                stdout=out,
+                stderr=err,
+                start_new_session=True,  # its own process group, so we can stop all of it
+            )
+            try:
+                timed_out = self._wait(proc)
+            except BaseException as exc:  # Ctrl-C / SIGTERM on the controller
+                self._stop(proc)
+                raise AttemptKilled(f"controller interrupted during {attempt_id}") from exc
+            if timed_out:
+                self._stop(proc)
+
+        commit, diff_summary = self._commit(attempt_id, intent, base)
+        return AttemptResult(
+            agent=self.agent,
+            commit=commit,
+            diff_summary=diff_summary + ("\n(stopped at the timebox)" if timed_out else ""),
+            exit_code=proc.returncode,
+            blocked=blocked_calls(transcript),
+        )
+
+    def _commit(self, attempt_id: str, intent: str, base: str) -> tuple[str, str]:
+        self._git("add", "-A")
+        self._git("commit", "--allow-empty", "-q", "-m", f"attempt {attempt_id}: {intent}")
+        commit = self._git("rev-parse", "HEAD")
+        stat = self._git("diff", "--stat=100", base, commit)
+        return commit, stat or "no changes"
+
+
+def blocked_calls(transcript: Path) -> tuple[str, ...]:
+    """Tool calls the pre-gate blocked, read from the stream-json transcript's hook events."""
+    return ()

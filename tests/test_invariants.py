@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from tokeneyezed.controller.config import load_config
+from tokeneyezed.controller.runners.claude import IsolationError, RunnerPaths, check_isolation
 from tokeneyezed.observer.core import PreGate
 from tokeneyezed.observer.shim import handle, to_event
 
@@ -46,8 +47,14 @@ def test_i1_hidden_splits_unreachable_from_task_workspace() -> None:
     pytest.skip("I1 not built yet (owner: Gunjan): needs split + workspace config")
 
 
-def test_i2_task_workspace_outside_repo() -> None:
-    pytest.skip("I2 not built yet (owner: Julian): needs workspace config")
+def test_i2_task_workspace_outside_repo(tmp_path: Path) -> None:
+    # The runner refuses to start in a workspace that overlaps this repo (the repo root is itself
+    # a git repo, so the refusal can only come from the I2 check); one outside it is accepted.
+    (tmp_path / "ws" / ".git").mkdir(parents=True)
+    outside = RunnerPaths(tmp_path / "ws", tmp_path / "runs", tmp_path / "cfg")
+    check_isolation(outside)
+    with pytest.raises(IsolationError, match="I2"):
+        check_isolation(RunnerPaths(SRC.parents[1], tmp_path / "runs", tmp_path / "cfg"))
 
 
 def test_i4_pre_gate_blocks_honeypot(tmp_path) -> None:
@@ -93,8 +100,15 @@ def test_i5_pre_gate_blocks_tampering(tmp_path) -> None:
         assert gate.check(event).action == ("allow" if path == "renderer.py" else "block")
 
 
-def test_i6_hook_configs_outside_task_workspace() -> None:
-    pytest.skip("I6 not built yet (owner: Julian): needs runner config")
+def test_i6_runner_files_outside_task_workspace(tmp_path: Path) -> None:
+    # Hook settings, spools, and transcripts live under the runs dir; the agent's Claude config
+    # has its own dir. The runner refuses either inside the workspace.
+    ws = tmp_path / "ws"
+    (ws / ".git").mkdir(parents=True)
+    check_isolation(RunnerPaths(ws, tmp_path / "runs", tmp_path / "cfg"))
+    for runs, cfg in ((ws / "runs", tmp_path / "cfg"), (tmp_path / "runs", ws / "cfg")):
+        with pytest.raises(IsolationError, match="I6"):
+            check_isolation(RunnerPaths(ws, runs, cfg))
 
 
 RUN_CONFIGS = ("b.toml", "h.toml", "h-mem.toml")

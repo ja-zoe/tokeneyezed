@@ -6,6 +6,10 @@ max_attempts = 30       # attempt budget per run, flagged attempts included
 max_turns = 40          # per-attempt agent turn limit (claude -p --max-turns)
 failure_threshold = 3   # consecutive non-improving attempts on a goal before a replan
 target_val_pass = 0.85  # a goal completes when its section's validation pass rate reaches this
+timebox_minutes = 15    # wall-clock limit per attempt, on top of max_turns
+
+# Bash commands the agent may run without a prompt (file edits are allowed by acceptEdits).
+allowed_tools = ["Bash(python *)", "Bash(python3 *)", "Bash(pytest *)", "Bash(ls *)", "Bash(cat *)"]
 
 # One goal per CommonMark spec section (section names from spec.json; confirm against the split).
 sections = [
