@@ -41,7 +41,7 @@ class FakeCollection:
     def __init__(self, name: str, log: list) -> None:
         self.name, self.log = name, log
 
-    def find_one(self, query: dict, projection: dict, sort: list) -> dict | None:
+    def find_one(self, query: dict, projection: dict, sort: list | None = None) -> dict | None:
         self.log.append((self.name, "find_one", query))
         self.log.append((self.name, "find_one_sort", sort))
         return {**ATTEMPT, "attempt_id": "a-best", "outcome": "improved"}

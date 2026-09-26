@@ -281,9 +281,22 @@ class MongoBriefBuilder:
             session_id=session_id,
             goal_id=goal.goal_id,
             section=goal.section,
-            goal_text=_goal_text(goal),
+            goal_text=goal_text(goal.section, self._strategy_notes(goal.goal_id)),
             use_memory=use_memory,
             db=self._db,
             embedder=self._embedder,
         )
         return brief.render()
+
+    def _strategy_notes(self, goal_id: str) -> str | None:
+        """The goal's latest replan note from `goals` (MongoGoalStore writes it)."""
+        db = self._db if self._db is not None else get_db()
+        doc = db["goals"].find_one({"goal_id": goal_id}, {"strategy_notes": 1})
+        return doc.get("strategy_notes") if doc else None
+
+
+def goal_text(section: str, strategy_notes: str | None) -> str:
+    """What the planner reads as the goal, and what retrieval searches with."""
+    if not strategy_notes:
+        return section
+    return f"{section}. Replanned; strategy now: {strategy_notes}"

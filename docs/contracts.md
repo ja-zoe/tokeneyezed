@@ -19,25 +19,54 @@ The field lists in `master-plan.md` ("MongoDB data model") are the starting poin
  "output_summary": null, "verdict": "block: honeypot", "ts": "..."}
 ```
 
-## Goal (example)
+## Goal (locked by Aaron)
+
+One document per spec section per session, in `goals`. Written only by `MongoGoalStore` (`src/tokeneyezed/data/goals.py`).
 
 ```json
-{"session_id": "H-0926", "section": "Emphasis and strong emphasis",
- "status": "open", "priority": 2,
+{"goal_id": "H-0926:Emphasis and strong emphasis", "session_id": "H-0926",
+ "section": "Emphasis and strong emphasis",
+ "status": "open", "priority": 18,
  "completion_criteria": {"val_pass": 0.85},
- "strategy_notes": "Replanned after 3 flat attempts: implement the delimiter-run algorithm (spec 6.2) instead of regex",
- "last_replanned_at": "..."}
+ "strategy_notes": "3 attempts without improvement; best validation 0.40",
+ "replan_count": 1, "last_replanned_at": "...", "created_at": "...", "completed_at": null}
 ```
 
-## Attempt (example)
+| Field | Meaning |
+|---|---|
+| `goal_id` | `<session_id>:<section>`. |
+| `status` | `open` or `complete`. |
+| `priority` | Lower goes first; seeded in config order. A replan does **not** change it: the goal stays next, with a new strategy. |
+| `completion_criteria.val_pass` | The goal completes when its section's validation pass rate reaches this. |
+| `strategy_notes` | The latest replan note, or `null` before the first replan. The brief shows it to the planner. |
+| `replan_count`, `last_replanned_at` | How often and when the goal was replanned. |
+
+## Attempt (locked by Aaron)
+
+One document per attempt, in `attempts` (the ledger). Written only by `MongoLedger` (`src/tokeneyezed/data/ledger.py`): `open_attempt` before the agent starts (events reference its id mid-attempt), then `close_attempt` or `mark_running_as_killed`.
 
 ```json
-{"attempt_id": "a-017", "goal_id": "...", "agent": "claude",
+{"attempt_id": "H-0926-017-3fa9c1", "number": 17, "session_id": "H-0926",
+ "goal_id": "H-0926:Emphasis and strong emphasis", "agent": "claude",
  "intent": "Replace regex emphasis with a delimiter stack; don't touch link parsing",
- "commit": "3f9c2e1", "visible_pass": 0.81, "val_pass": 0.58,
+ "parent_attempt": "H-0926-014-9be2d0", "status": "closed",
+ "diff_summary": "inline.py: delimiter stack", "commit": "3f9c2e1",
+ "visible_pass": 0.81, "val_pass": 0.58,
  "per_section": {"Emphasis and strong emphasis": {"visible": 0.90, "val": 0.71}},
- "outcome": "improved", "observer_flags": [], "parent_attempt": "a-014"}
+ "outcome": "improved", "observer_flags": [],
+ "embedding": [0.012, "... 1024 floats"],
+ "created_at": "...", "closed_at": "..."}
 ```
+
+| Field | Meaning |
+|---|---|
+| `status` | `running` (opened; no scores yet), `closed` (scored), or `killed` (the agent died before finishing; never scored). |
+| `number` | Session-wide attempt counter; orders attempts (the last clean commit is the highest-numbered one). |
+| `outcome` | Set by the controller on close: `improved` counts as a success; `flagged` means the gaming review flagged it; `killed` is set by `mark_running_as_killed`. Any other value counts as a failed attempt in the brief. |
+| `embedding` | Voyage `voyage-4`, 1024 dimensions, over `intent` + `diff_summary`. Absent on flagged and killed attempts. If Voyage failed, it is absent and `needs_embedding: true` marks the attempt for `backfill_embeddings()`. |
+| `per_section` | The scorer's output shape. The brief ranks "best attempt" by the goal's own section score. |
+
+**Invariant I8:** a `flagged` attempt stays in `attempts` for the audit, but is never embedded, compacted into `memory`, or shown in the brief.
 
 ## Scorer output (to be defined by Gunjan)
 

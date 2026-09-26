@@ -6,8 +6,6 @@ Gaps found while reviewing the master plan and the work split. Each one needs an
 
 1. **How do hooks know which attempt they belong to?** The shim needs `session_id`, `attempt_id`, and the planner's intent (the declared-intent check uses it), and nothing specifies how it gets them. Proposal: the attempt runner sets env vars when it launches the agent (`TOKENEYEZED_SESSION_ID`, `TOKENEYEZED_ATTEMPT_ID`, `TOKENEYEZED_INTENT`), since hooks inherit the agent's environment. *Owners: Julian + Dharshan.*
 
-2. **The `attempts` doc has to exist before the agent starts.** Events reference `attempt_id` in the middle of an attempt, but the diagram writes to the ledger only after a clean review. Proposal: create the doc with `status: "running"` at launch, then set the outcome. "Kept out of memory" should mean excluded from the brief, embeddings, and metrics, not never written, because the audit needs the record. *Owners: Aaron + Julian.*
-
 3. **Budget has to count flagged attempts.** Flagged attempts loop back to goal selection without touching the failure threshold. If the budget counts only clean attempts, a goal that invites gaming can use up attempts forever. *Owner: Julian.*
 
 4. **Baseline B needs event logging.** The observer replay eval runs B's recorded events through the observer, but B has "no observer". Options: a log-only hook that never blocks, or parsing B's `stream-json` output into `events`. B also has to be scored on the visible and validation splits (not just visible), because the gaming check compares the two. *Owners: Gunjan + Dharshan.*
@@ -27,10 +25,6 @@ The state already lives in Atlas, so the handoff is mostly a demo that proves it
 ## Task workspace location
 
 The task repo the attempt agents work in must live **outside this repository**. Claude Code loads `CLAUDE.md` files and skills from parent directories, so an agent launched inside this repo would pick up our team instructions, and it could also reach the scorer and the hidden validation and held-out splits. The master plan's `CLAUDE_CONFIG_DIR` isolation does not cover files in parent directories. *Owners: Julian + Gunjan.*
-
-## Embeddings (provisional)
-
-Provisionally Voyage API called directly. Aaron's 10:30 check confirms or reverses it; the reasoning and the check are in `master-plan.md` under "MongoDB data model". *Owner: Aaron.*
 
 ## Codex did not run project hooks in a test (affects the observer)
 
