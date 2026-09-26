@@ -13,7 +13,7 @@ Goal of this split: **nobody is idle waiting on someone else's output.** The onl
 | Person | Owns | Why them |
 |---|---|---|
 | **Aaron** | **Data / MongoDB + Memory** — schema & indexes, events/attempts writes, brief builder, compactor, embeddings, retrieval eval | Already has these schemas drafted from the original SOW (`goals`, `memory`, `skills`) — fastest path to a locked contract that unblocks the other three |
-| **Julian** | **Agent Loop** — LangGraph controller, planner, attempt runner, checkpointing/resume, Codex handoff | Owns the critical-path piece everyone else's data depends on; can scaffold this with zero dependencies |
+| **Julian** | **Agent Loop** — LangGraph controller, planner, attempt runner, checkpointing/resume, agent handoff | Owns the critical-path piece everyone else's data depends on; can scaffold this with zero dependencies |
 | **Dharshan** | **Observer** — event format, shim (Claude Code + Codex), pre-gate, post-checks, gaming review, rule learner | Owns the headless-hook research already in the master plan; runs the 10:30 smoke test |
 | **Gunjan** | **Task / Eval / Demo** — CommonMark split + scorer, baseline runner, `test_evals`, dashboard, charts, video, README, submission | Fully decoupled work — can start building and testing without waiting on anyone, and the baseline run only needs the task repo |
 
@@ -46,12 +46,12 @@ At 10:45, the three *contract owners* (Aaron, Dharshan, Gunjan) sync for 15 minu
 | 11:00–12:45 | Write-path helpers for `events`/`attempts` | Attempt runner (`claude -p` + hooks), writing real attempts | Pre-gate live in the shim; pairs with Julian on wiring | Finishes scorer edge cases; preps `test_evals` writer |
 | 12:45–1:30 | Brief builder + compactor + goals/replan | Integration check at lunch | Integration check at lunch | Integration check at lunch |
 | **1:30** | — | **Start runs H and H-mem** | — | — |
-| 1:30–3:15 | Retrieval eval | Monitors H/H-mem; preps Codex handoff | Post-checks, gaming review, rule learner + replay, Codex shim | Dashboard (v0), charts |
-| **3:15** | — | **Codex handoff run** (with Dharshan) | Codex shim support | — |
+| 1:30–3:15 | Retrieval eval | Monitors H/H-mem; preps agent handoff | Post-checks, gaming review, rule learner + replay, Codex shim | Dashboard (v0), charts |
+| **3:15** | — | **Agent handoff run** (with Dharshan) | Second agent's shim support | — |
 | 3:45 | Compute eval numbers | Compute eval numbers | Compute eval numbers | **Freeze runs**, compute eval numbers |
 | 4:00–4:45 | Rehearse demo | Rehearse demo | Rehearse demo | Video, README, **submit by 4:45** |
 
-**Cut order if behind, same as the master plan:** skill distillation → rule learner (S1) → H-mem run → Codex handoff → dashboard polish → model-based observer checks.
+**Cut order if behind, same as the master plan:** skill distillation → rule learner (S1) → H-mem run → agent handoff → dashboard polish → model-based observer checks.
 
 ---
 
@@ -161,7 +161,7 @@ Build, in order (don't wait on anyone for step 1):
    -> replan or continue -> loop, or finish if all goals closed / budget spent.
    Also wire an async heartbeat that can resume from the latest checkpoint in
    Atlas — optionally with a DIFFERENT downstream agent than the one that
-   started (this powers the Codex-handoff demo beat later).
+   started (this powers the agent-handoff demo beat later).
 
 2. Build the attempt runner: launches a headless coding agent in the task
    repo with the current brief. Two backends:
@@ -199,7 +199,7 @@ Build, in order (don't wait on anyone for step 1):
    retrieval disabled via a config flag — same brief builder call but skip the
    ledger-retrieval and memory-summary parts).
 
-6. At 3:15, do the Codex handoff demo run: kill the H run (SIGTERM — this exits
+6. At 3:15, do the agent handoff demo run: kill the H run (SIGTERM — this exits
    143, drops the in-progress turn, runs only SessionEnd hooks; fine, since our
    state lives in Atlas, not in the agent's own session), then resume from the
    latest checkpoint using codex exec instead of claude -p. Confirm the score
@@ -288,7 +288,7 @@ Build, in order:
      propose a candidate rule, replay it over stored `interventions`/`events`
      to prove it actually distinguishes flagged from good steps before
      promoting it to `rules` (never mid-run).
-   - Codex shim support for Julian's 3:15 handoff.
+   - Second agent's shim support for Julian's 3:15 agent handoff.
 
 Ask me for the exact --settings / hooks.json path convention Julian's attempt
 runner will use, right after 10:45.
@@ -355,7 +355,7 @@ Build, in order:
    per configuration is a demonstration, not a statistically significant
    result — say it before a judge asks.
 
-8. 4:00–4:45: record the 1-minute video (score chart -> kill/resume on Codex
+8. 4:00–4:45: record the 1-minute video (score chart -> kill/resume on a different agent
    -> honeypot block), write the README (must include a clear "what we built
    vs. what we used" table: Claude Code, Codex, LangGraph, Atlas, Voyage — this
    is required to avoid disqualification), and submit by 4:45 (15 minutes of

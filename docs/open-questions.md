@@ -16,7 +16,7 @@ Gaps found while reviewing the master plan and the work split. Each one needs an
 
 6. **When do learned rules take effect?** Dharshan's prompt says to promote rules "never mid-run", but the master plan hot-reloads rules through a change stream. Proposal: promote mid-run, but the pre-gate picks up new rules only at the next attempt boundary. That keeps each attempt internally consistent for the eval. *Owner: Dharshan.*
 
-## Codex handoff
+## Agent handoff
 
 The state already lives in Atlas, so the handoff is mostly a demo that proves it. The pieces that are easy to miss:
 
@@ -34,5 +34,5 @@ Provisionally Voyage API called directly. Aaron's 10:30 check confirms or revers
 
 ## Codex did not run project hooks in a test (affects the observer)
 
-While adding the session-start sync hook (2026-09-26), `codex exec` (codex-cli 0.157.1) ran **no** hook from a repo's `.codex/hooks.json`: neither `SessionStart` nor a `PreToolUse` probe that only appends a line to a file. This held with `--dangerously-bypass-hook-trust` and with the project marked trusted via `-c 'projects."<path>".trust_level="trusted"'`. The same setup in Claude Code worked. Not yet diagnosed: it may be that project-level hooks need interactive `/hooks` review, a user-level `CODEX_HOME` config, or something else. The master plan already plans to use a dedicated `CODEX_HOME` rather than the repo, so the 10:30 smoke test should confirm that path works before the Codex handoff depends on it. *Owner: Dharshan.*
+While adding the session-start sync hook (2026-09-26), `codex exec` (codex-cli 0.157.1) ran **no** hook from a repo's `.codex/hooks.json`: neither `SessionStart` nor a `PreToolUse` probe that only appends a line to a file. This held with `--dangerously-bypass-hook-trust` and with the project marked trusted via `-c 'projects."<path>".trust_level="trusted"'`. The same setup in Claude Code worked. Not yet diagnosed: it may be that project-level hooks need interactive `/hooks` review, a user-level `CODEX_HOME` config, or something else. The master plan already plans to use a dedicated `CODEX_HOME` rather than the repo, so the 10:30 smoke test should confirm that path works before an agent handoff involving Codex depends on it. *Owner: Dharshan.*
 

@@ -1,6 +1,6 @@
 # Tokeneyezed
 
-Long agent runs forget what they tried, repeat dead ends, and quietly game their tests. Tokeneyezed keeps a real coding agent working toward a hard metric across compactions, crashes, and even a switch from Claude Code to Codex. Every attempt lives in MongoDB Atlas, the plan changes when the metric says it isn't working, and an observer keeps cheating and bad steps out of memory. Each piece is measured against a plain retry loop.
+Long agent runs forget what they tried, repeat dead ends, and quietly game their tests. Tokeneyezed keeps a real coding agent working toward a hard metric across compactions, crashes, and even a handoff to a different coding agent mid-run. Every attempt lives in MongoDB Atlas, the plan changes when the metric says it isn't working, and an observer keeps cheating and bad steps out of memory. Each piece is measured against a plain retry loop.
 
 Built for MongoDB's Harness Engineering & Model Wrangling hackathon, Statement Two (Long Horizon Engineering).
 

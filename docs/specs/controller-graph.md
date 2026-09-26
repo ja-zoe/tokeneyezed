@@ -27,7 +27,7 @@ review -+-> record_flagged -> pick_goal                        (gaming flagged: 
 
 ### 2. Ports: the seam to the other workstreams (`src/tokeneyezed/ports.py`)
 
-Nodes never import another workstream's code directly. They call **ports**, `typing.Protocol` interfaces passed in through LangGraph's runtime context (`Runtime[Context]`). The context is *not* checkpointed, which is what makes the Codex handoff free: resume the same checkpoint with a different `AttemptRunner` in the context.
+Nodes never import another workstream's code directly. They call **ports**, `typing.Protocol` interfaces passed in through LangGraph's runtime context (`Runtime[Context]`). The context is *not* checkpointed, which is what makes the agent handoff free: resume the same checkpoint with a different `AttemptRunner` in the context.
 
 | Port | Implemented by | Methods (draft) |
 |---|---|---|
@@ -45,7 +45,7 @@ Each port ships with a **fake** in `controller/fakes.py`, so the whole loop runs
 ### 3. Checkpointing and resume
 
 - `MongoDBSaver` against `MONGODB_URI` for real runs; `InMemorySaver` in tests. `thread_id` = `session_id`.
-- **Resume = invoke with `None` on the same thread.** Before resuming, the CLI calls `Ledger.mark_running_as_killed(session_id)` and `AttemptRunner.reset_workspace(last_clean_commit)`, so the in-flight attempt is recorded as killed, never scored, and its half-edits are discarded (open-questions "Codex handoff").
+- **Resume = invoke with `None` on the same thread.** Before resuming, the CLI calls `Ledger.mark_running_as_killed(session_id)` and `AttemptRunner.reset_workspace(last_clean_commit)`, so the in-flight attempt is recorded as killed, never scored, and its half-edits are discarded (open-questions "Agent handoff").
 - The heartbeat is deferred: for now, resume is a manual CLI command. A watchdog that auto-resumes stale sessions is a later addition.
 
 ### 4. Operator interface: how we drive the harness (`tokeneyezed` CLI)
@@ -54,11 +54,11 @@ The master plan says runs start from the CLI and the dashboard is only a support
 
 ```
 tokeneyezed run    --config configs/h.toml [--session-id H-0926]   # new session, runs until done or killed
-tokeneyezed resume <session_id> [--agent codex]                    # continue from the latest checkpoint
+tokeneyezed resume <session_id> [--agent AGENT]                    # continue from the latest checkpoint
 tokeneyezed status [<session_id>]                                  # goals, attempt count, best val_pass, flags
 ```
 
-Killing is Ctrl-C / SIGTERM on the `run` process; `resume` then picks it up. This is the live demo beat: kill, `resume --agent codex`, same score.
+Killing is Ctrl-C / SIGTERM on the `run` process; `resume` then picks it up. This is the live demo beat (the agent handoff): kill, `resume --agent <a different agent>`, same score.
 
 **Run configs** live in `configs/` as TOML: `base.toml` holds what must be identical across runs (pinned model, attempt budget, per-attempt `max_turns`, failure threshold, workspace and hook paths), and `b.toml`, `h.toml`, `h-mem.toml` override only what differs (`memory = false` for H-mem). One base file is what makes invariant I7 checkable. The baseline and report commands belong to Gunjan (`eval/`) and are out of scope here; they read the same configs.
 
@@ -67,7 +67,7 @@ Killing is Ctrl-C / SIGTERM on the `run` process; `resume` then picks it up. Thi
 The judges see a live demo, not a product pitch, so the interface is whatever reads best on a projector while the real run is already in progress. The H run starts around 1:30 and each attempt takes minutes, so the demo shows a run in flight, not one starting.
 
 - **`tokeneyezed run` prints a live feed** (`controller/live.py`) in a terminal pane that stays open all afternoon: one short block per attempt (number, agent, goal, intent, scores, verdict), printed when the attempt *starts* so a pane is never silent for minutes, plus loud markers for the beats we point at: `FLAGGED`, `REPLAN`, `GOAL COMPLETE`, `KILLED`.
-- **Codex handoff beat:** Ctrl-C shows `KILLED during attempt #N`; `tokeneyezed resume <id> --agent codex` shows a `RESUMED` banner with the state restored from Atlas (attempts done, killed attempt id, best score per goal) and restarts attempt #N on Codex. The banner is the proof; nobody has to wait for the attempt to finish.
+- **Agent handoff beat:** Ctrl-C shows `KILLED during attempt #N`; `tokeneyezed resume <id> --agent <another agent>` shows a `RESUMED` banner with the state restored from Atlas (attempts done, killed attempt id, best score per goal) and restarts attempt #N on the new agent. The banner is the proof; nobody has to wait for the attempt to finish.
 - **Replan beat:** show the `goals` document in the Atlas UI next to the feed's `REPLAN` line.
 - **Score chart and honeypot:** Gunjan's report produces the chart. For the honeypot beat, we should not count on the agent trying `pip install markdown-it-py` on cue during a 3-minute slot: plan a scripted short attempt whose brief asks for it, with the observer's block shown live (needs the runner to surface blocked tool calls; follow-up with Dharshan).
 

@@ -19,7 +19,7 @@ Each workstream has its own package, so four people can work in parallel without
 
 | Package | Workstream | Owner |
 |---|---|---|
-| `src/tokeneyezed/controller/` | Agent loop: LangGraph controller, planner, attempt runner, resume, Codex handoff | Julian |
+| `src/tokeneyezed/controller/` | Agent loop: LangGraph controller, planner, attempt runner, resume, agent handoff | Julian |
 | `src/tokeneyezed/data/` | MongoDB schema, indexes, write helpers, brief builder, compactor, embeddings | Aaron |
 | `src/tokeneyezed/observer/` | Shim, pre-gate, post-checks, gaming review, rule learner | Dharshan |
 | `src/tokeneyezed/eval/` | CommonMark split, scorer, baseline runner, `test_evals`, charts | Gunjan |

@@ -12,7 +12,7 @@ tags: [hackathon, master-plan]
 This merges Aaron's SOW (goal loop, replan, heartbeat, schema, phases) with our plan (real coding agents through hooks, attempt ledger, observer, baselines). Background research: [[Harness Primitives Landscape]].
 
 > [!success] Pitch (first 20 seconds of the demo)
-> Long agent runs forget what they tried, repeat dead ends, and quietly game their tests. Our harness keeps a real coding agent working toward a hard metric across compactions, crashes, and even a switch from Claude Code to Codex. Every attempt lives in Atlas. The plan changes when the metric says it isn't working, and an observer keeps cheating and bad steps out of memory. We measured each piece against a plain retry loop.
+> Long agent runs forget what they tried, repeat dead ends, and quietly game their tests. Our harness keeps a real coding agent working toward a hard metric across compactions, crashes, and even a handoff to a different coding agent mid-run. Every attempt lives in Atlas. The plan changes when the metric says it isn't working, and an observer keeps cheating and bad steps out of memory. We measured each piece against a plain retry loop.
 
 **Statement:** Two (Long Horizon Engineering), with one small Statement One feature (rules learned from observer flags, proven by replay).
 
@@ -25,13 +25,13 @@ This merges Aaron's SOW (goal loop, replan, heartbeat, schema, phases) with our 
 | Who does the work | Own LangGraph planner + own tool executor | Real coding agents wrapped by hooks | **Hybrid.** Our LangGraph outer loop plans; each *attempt* is a headless coding agent (`claude -p`, `codex exec`) with our observer in its hooks | A real agent codes far better than a homemade executor, and every piece that matters is still clearly our code |
 | Goals + replan | `goals` collection, replan past a failure threshold | Not present | **Keep Aaron's.** One goal per CommonMark spec section | The clearest "the plan changed because of an outcome" moment |
 | Memory | Compacted summaries in `memory` | Structured attempt ledger | **Both.** `attempts` (structured: intent, diff, scores) + `memory` (compacted summaries) | The ledger powers the repeat-failure check and retrieval eval; summaries keep the narrative |
-| Checkpoint / resume | Hand-rolled `sessions` checkpoint + heartbeat | Kill and resume, possibly with a different agent | **LangGraph `MongoDBSaver` checkpoints + Aaron's heartbeat.** The resume demo switches to Codex | The existing library saves time; switching agents on resume is a stronger beat |
+| Checkpoint / resume | Hand-rolled `sessions` checkpoint + heartbeat | Kill and resume, possibly with a different agent | **LangGraph `MongoDBSaver` checkpoints + Aaron's heartbeat.** The resume demo hands the run to a different agent (the agent handoff) | The existing library saves time; switching agents on resume is a stronger beat |
 | Session events | `events` array embedded inside the `sessions` document | Separate event log | **Separate `events` collection**, one document per event | Long runs would grow the array without bound and eventually hit MongoDB's 16 MB document limit. MongoDB judges will notice this |
 | Observer placement | Evaluates *after* the tool runs (F17 then F18) | Before and after, through hooks | **Before:** blocks honeypot, tampering, destructive actions, and learned rules (`PreToolUse`). **After:** checks intent, repeats, progress (`PostToolUse`). **End of attempt:** checks for gaming (visible vs. validation gap) | Blocking a destructive action after it runs is too late |
 | Observer failure mode | Fail open | n/a | **Deterministic checks fail closed; model-based checks fail open** | Plain-code checks can't misfire; a model outage shouldn't halt the run |
 | Observer gating memory | Flagged steps never reach `metrics`/`memory` | n/a | **Keep.** It's the sharpest thesis line | "Memory quality depends on what's allowed into it" |
 | Statement One | Explicitly out | Full evolver | **Small:** repeated flags become candidate rules, promoted only if a replay over stored events proves them. Skill distillation (F28) is stretch | Replay costs no agent runs; the full evolver would eat the run budget and learn from noise |
-| Parallel swarms | Out | Island model across vendors | **Out** (compute). Keep a *sequential* handoff: Claude Code to Codex on resume | Differentiates cheaply |
+| Parallel swarms | Out | Island model across vendors | **Out** (compute). Keep a *sequential* agent handoff: resume on a different agent than the one running | Differentiates cheaply |
 | Task | Open | Speed-up | **CommonMark renderer with a three-way test split** | Long enough, fast to score, gaming is measurable, a natural honeypot |
 | Baseline | None | Vanilla agent | **Naive retry loop** ("Ralph loop") with the same model, prompt, and number of attempts | Otherwise a judge says "you just ran it longer" |
 | Dashboard | Vercel v0, 5 panels, entry point for goals | Live score view | **Supporting view only** (score curves, goals, flags, context size). Runs start from the CLI | Rules ban projects where a dashboard is the main feature |
@@ -167,7 +167,7 @@ If (2) works, keep Voyage direct. If (2) fails or is throttled and (1) shows pai
 | **H-mem: Harness without memory** | Brief without ledger retrieval or memory summaries (a config flag) | Same time as H | Isolates what memory contributes |
 
 - **Compare at equal attempt counts**, not wall-clock time: the x-axis is attempt number, and the baseline gets capped at the harness's attempt count.
-- The **Codex handoff** runs separately on Codex credits: kill H partway, resume with `codex exec` from the same Atlas state, and show the score doesn't drop.
+- The **agent handoff** runs separately: kill H partway, resume it on a different agent than the one running (any agent can start a session; for the demo, Claude Code and Codex in either direction) from the same Atlas state, and show the score doesn't drop. It runs on that agent's own credits.
 
 ### Per-component metrics (mostly from the logs of those runs, plus cheap offline replays)
 
@@ -194,20 +194,20 @@ If (2) works, keep Voyage direct. If (2) fails or is throttled and (1) shows pai
 | 11:00 to 12:45 | Controller + checkpointing + attempt runner (`claude -p`); shim + observer pre-gate (honeypot, tampering, destructive); events + attempts writes | 1, 3 |
 | 12:45 to 1:30 | Brief builder + compactor + goals/replan. Integration check at lunch | 1, 2 |
 | **1:30** | **Start runs H and H-mem** | 1 |
-| 1:30 to 3:15 | Post-checks + corrective notes; end-of-attempt gaming review; rule learner + replay (S1); Codex shim + resume; retrieval eval; dashboard panels | 2, 3, 4 |
-| 3:15 | **Codex handoff run** (kill H, resume on Codex) | 1 |
+| 1:30 to 3:15 | Post-checks + corrective notes; end-of-attempt gaming review; rule learner + replay (S1); second agent's shim + resume; retrieval eval; dashboard panels | 2, 3, 4 |
+| 3:15 | **Agent handoff run** (kill H, resume on a different agent) | 1 |
 | 3:45 | **Freeze runs.** Compute all eval numbers + charts | 2, 4 |
 | 4:00 to 4:45 | Rehearse the 3-minute live demo; record the 1-minute video; README with a "what we built vs. what we used" table | All |
 | **4:45** | Submit (15 minutes of buffer before the 5:00 deadline) | 4 |
 
-**Cut order if behind** (first to go at the top): skill distillation > rule learner (S1) > H-mem run > Codex handoff > dashboard polish > model-based observer checks.
+**Cut order if behind** (first to go at the top): skill distillation > rule learner (S1) > H-mem run > agent handoff > dashboard polish > model-based observer checks.
 **Never cut:** baseline run, controller + resume, attempts ledger + brief, replan, the observer's pre-gate, the held-out eval.
 
 ## Workstreams (4 people, adapted from Aaron's roles)
 
 | # | Role | Owns |
 |---|---|---|
-| 1 | **Agent loop** (Aaron's Backend / Agent Loop) | LangGraph controller, planner, attempt runner, goals + replan, heartbeat + resume, Codex handoff |
+| 1 | **Agent loop** (Aaron's Backend / Agent Loop) | LangGraph controller, planner, attempt runner, goals + replan, heartbeat + resume, agent handoff |
 | 2 | **Data / MongoDB + memory** (Aaron's Data + Memory roles merged) | Schema + indexes, events/attempts writes, brief builder, compactor, embeddings, retrieval eval |
 | 3 | **Observer** | Shim (Claude Code, then Codex), pre-gate, post-checks, gaming review, rule learner + replay, observer eval |
 | 4 | **Task, eval + demo** (Aaron's Frontend / Demo, plus eval) | CommonMark split + scorer, baseline runner, `test_evals`, dashboard (v0), charts, video, README, submission |
@@ -220,7 +220,7 @@ If (2) works, keep Voyage direct. If (2) fails or is throttled and (1) shows pai
 
 1. **(15 s)** The pitch above.
 2. **(45 s)** Score chart: held-out pass rate vs. attempt number for harness, baseline, and harness-without-memory. Point at one attempt where the brief pulled up an earlier failed attempt and the agent went a different way.
-3. **(30 s)** Kill the run. Resume it with **Codex** from the Atlas checkpoint. It continues from the same score, with no repeated work.
+3. **(30 s)** Kill the run. Resume it on a **different agent** from the Atlas checkpoint (the agent handoff). It continues from the same score, with no repeated work.
 4. **(30 s)** Honeypot: the agent tries `pip install markdown-it-py`, the observer blocks it live, and the attempt never reaches memory. Then show the replay numbers: what the observer would have caught in the baseline's run.
 5. **(30 s)** A replan: the `goals` document changes in Atlas after a failure streak, and the chart improves afterward. One learned rule, with its replay evidence.
 6. **(15 s)** What we built vs. what we used (Claude Code, Codex, LangGraph, Atlas, Voyage). This is required to avoid disqualification.

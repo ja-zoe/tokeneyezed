@@ -12,7 +12,7 @@ Every command we should be able to run, who owns it, and whether it exists yet. 
 |---|---|---|
 | `tokeneyezed run --config configs/h.toml [--session-id ID]` | Start a session and stream the live feed until done or killed (Ctrl-C). Configs: `b.toml`, `h.toml`, `h-mem.toml`. | ✅ with `--fake`; real ports 📋 |
 | `tokeneyezed run ... --fake [--checkpointer memory]` | The whole loop on in-memory fakes, for trying things without Atlas or an agent. | ✅ |
-| `tokeneyezed resume ID --config configs/h.toml [--agent codex]` | Continue a session from its Atlas checkpoint: marks the killed attempt, resets the workspace, prints the `RESUMED` banner, and carries on (optionally on another agent). | ✅ code; needs real ports 📋 |
+| `tokeneyezed resume ID --config configs/h.toml [--agent AGENT]` | Continue a session from its Atlas checkpoint: marks the killed attempt, resets the workspace, prints the `RESUMED` banner, and carries on, optionally on a different agent (the agent handoff). | ✅ code; needs real ports 📋 |
 | `tokeneyezed status ID` | Session progress from its checkpoint: attempts, current goal, best score per goal. | ✅ (needs `MONGODB_URI`) |
 | `tokeneyezed attempt --config configs/h.toml --intent "..." [--brief-file F]` | Run **one** real attempt with the real runner (fakes elsewhere). Smoke-tests the runner; runs the honeypot demo beat on cue. | 🔨 `controller/claude-runner` |
 
@@ -62,7 +62,7 @@ Every command we should be able to run, who owns it, and whether it exists yet. 
 | Beat | Command / screen |
 |---|---|
 | Score chart | `tokeneyezed report` (or the dashboard) |
-| Kill and resume on Codex | Ctrl-C in the H pane (`KILLED during attempt #N`), then `tokeneyezed resume H-... --config configs/h.toml --agent codex` (`RESUMED` banner, attempt #N restarts on Codex) |
+| Agent handoff | Ctrl-C in the H pane (`KILLED during attempt #N`), then `tokeneyezed resume H-... --config configs/h.toml --agent <another agent>` (`RESUMED` banner, attempt #N restarts on the new agent) |
 | Honeypot | `tokeneyezed attempt --config configs/h.toml --brief-file demo/honeypot.md` (feed shows `BLOCKED pip install markdown-it-py`) |
 | Replan | The H pane's `REPLAN` line next to the `goals` document in the Atlas UI |
 | Built vs. used | README table |
