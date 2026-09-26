@@ -168,7 +168,20 @@ class Attempts:
         self.docs, self.results, self.pipelines = docs, results, []
 
     def find(self, query: dict, projection: dict) -> list[dict]:
-        return [d for d in self.docs if d["outcome"] not in ("flagged", "killed")]
+        """Honors the query's status/outcome filters, so dropping one is visible to the tests."""
+
+        def matches(doc: dict) -> bool:
+            for key, cond in query.items():
+                if isinstance(cond, dict):
+                    if "$nin" in cond and doc.get(key) in cond["$nin"]:
+                        return False
+                    if "$exists" in cond and (key in doc) != cond["$exists"]:
+                        return False
+                elif doc.get(key) != cond:
+                    return False
+            return True
+
+        return [d for d in self.docs if matches(d)]
 
     def aggregate(self, pipeline: list) -> list[dict]:
         self.pipelines.append(pipeline)
@@ -247,6 +260,16 @@ def test_run_eval_scores_each_arm_on_earlier_attempts_only() -> None:
     assert [p["input_type"] for p in payloads] == ["query"]  # embedded once, cached for hybrid
 
 
+def test_flagged_attempts_are_neither_queries_nor_candidates() -> None:
+    # Invariant I8. a-3 is flagged and on the same section as a-4: it must not be relevant to a-4,
+    # must not be scored as a query itself, and must not be counted if a search returns it.
+    db, _ = fake_db()
+    report = run_eval("S", db=db, embedder=embedder([]), sleep=lambda s: None)
+    assert "a-3" not in {q.attempt_id for q in report.queries}
+    assert all("a-3" not in q.relevant for q in report.queries)
+    assert all("a-3" not in ids for q in report.queries for ids in q.ranked.values())
+
+
 def test_run_eval_retries_rate_limited_auto_queries() -> None:
     sleeps: list[float] = []
     auto = Auto(["a-1"], fail_times=2)
@@ -262,7 +285,8 @@ def test_run_eval_retries_rate_limited_auto_queries() -> None:
         ("Got non OK status from response, status code: 503", True),
         ("Got non OK status from response, status code: 429", True),
         ("Got non OK status from response, status code: 400", False),
-        ("Path 'x' needs to be indexed as filter", False),
+        ("Path x needs to be indexed as filter", False),
+        ("Unable to generate the embedding", False),
     ],
 )
 def test_only_transient_auto_errors_are_retried(message: str, retried: bool) -> None:

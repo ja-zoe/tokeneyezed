@@ -434,7 +434,7 @@ def _auto_query(
 def _transient(err: OperationFailure) -> bool:
     """Rate limits and the embedding service's 429/5xx responses are worth retrying."""
     message = str(err).lower()
-    return "rate" in message or any(
+    return "rate limit" in message or any(
         f"status code: {c}" in message for c in (429, 500, 502, 503, 504)
     )
 
