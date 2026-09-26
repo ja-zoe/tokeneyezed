@@ -17,6 +17,7 @@ from tokeneyezed.controller.runners.base import (
     RunnerPaths,
     check_isolation,
 )
+from tokeneyezed.controller.runners.usage import read_claude_usage
 
 __all__ = ["ClaudeRunner", "IsolationError", "RunnerPaths", "blocked_calls", "check_isolation"]
 
@@ -86,6 +87,9 @@ class ClaudeRunner(HeadlessRunner):
 
     def blocked_calls(self, transcript: Path, attempt_id: str) -> tuple[str, ...]:
         return blocked_calls(transcript)
+
+    def usage(self, transcript: Path) -> dict[str, int] | None:
+        return read_claude_usage(transcript)
 
 
 def blocked_calls(transcript: Path) -> tuple[str, ...]:

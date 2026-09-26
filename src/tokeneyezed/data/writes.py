@@ -217,6 +217,7 @@ def close_attempt(
     per_section: Mapping[str, Any],
     outcome: str,
     observer_flags: list[Any],
+    usage: Mapping[str, int] | None = None,
     db: Database | None = None,
     embedder: Embedder | None = None,
 ) -> None:
@@ -255,6 +256,8 @@ def close_attempt(
         "status": CLOSED,
         "closed_at": _now(),
     }
+    if usage is not None:
+        fields["usage"] = {k: int(v) for k, v in usage.items()}
     if outcome != FLAGGED_OUTCOME:
         vector = (embedder or get_embedder()).embed_document_or_none(
             attempt_embedding_text(current["intent"], diff_summary)
