@@ -8,8 +8,10 @@ without credentials (and CI still runs the fakes).
 import os
 
 import pytest
+from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller import fakes
+from tokeneyezed.data.ledger import MongoLedger
 from tokeneyezed.ports import (
     AttemptResult,
     AttemptRunner,
@@ -36,7 +38,14 @@ PLANNERS = [fakes.FakePlanner]
 RUNNERS = [fakes.FakeRunner]
 SCORERS = [fakes.ScriptedScorer]
 REVIEWERS = [fakes.FakeReviewer]
-LEDGERS = [fakes.InMemoryLedger]
+
+
+def mongo_ledger() -> MongoLedger:
+    return MongoLedger(db=FakeDB(), embedder=embedder())
+
+
+LEDGERS = [fakes.InMemoryLedger, mongo_ledger]
+
 COMPACTORS = [fakes.FakeCompactor]
 
 GOAL = Goal(goal_id="c:Tabs", section="Tabs", target_val_pass=0.85)

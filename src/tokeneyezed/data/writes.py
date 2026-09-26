@@ -23,6 +23,8 @@ from pymongo.database import Database
 from tokeneyezed.data.db import get_db
 from tokeneyezed.data.embeddings import Embedder, get_embedder
 
+RUNNING, CLOSED, KILLED = "running", "closed", "killed"  # attempts.status
+KILLED_OUTCOME = "killed"  # outcome of an attempt whose agent was terminated; never scored
 PHASES = ("pre", "post", "stop")
 TOOLS = ("bash", "edit", "write", "read", "other")  # neutral names, docs/contracts.md
 FLAGGED_OUTCOME = "flagged"  # set by the end-of-attempt gaming review
@@ -148,6 +150,7 @@ def write_attempt(
         "outcome": outcome,
         "observer_flags": observer_flags,
         "parent_attempt": parent_attempt,
+        "status": CLOSED,
         "created_at": _now(),
     }
     if outcome != FLAGGED_OUTCOME:
@@ -159,6 +162,141 @@ def write_attempt(
         else:
             doc["embedding"] = vector
     return _attempts(db).insert_one(doc).inserted_id
+
+
+def open_attempt(
+    *,
+    session_id: str,
+    attempt_id: str,
+    number: int,
+    goal_id: str,
+    agent: str,
+    intent: str,
+    parent_attempt: str | None,
+    db: Database | None = None,
+) -> Any:
+    """Record an attempt as `running` before its agent starts, so hook events can reference it.
+
+    The doc has no scores, outcome or embedding yet; close_attempt() fills them in, and
+    mark_running_as_killed() closes it out if the agent dies first. `number` is the session-wide
+    attempt counter (last_clean_commit() orders by it). Returns the inserted _id.
+    """
+    for name, value in (
+        ("session_id", session_id),
+        ("attempt_id", attempt_id),
+        ("goal_id", goal_id),
+        ("agent", agent),
+        ("intent", intent),
+    ):
+        _require_str(name, value)
+    if type(number) is not int or number < 1:
+        raise ValueError(f"number must be a positive integer, got {number!r}")
+    if parent_attempt is not None:
+        _require_str("parent_attempt", parent_attempt)
+    doc = {
+        "session_id": session_id,
+        "attempt_id": attempt_id,
+        "number": number,
+        "goal_id": goal_id,
+        "agent": agent,
+        "intent": intent,
+        "parent_attempt": parent_attempt,
+        "status": RUNNING,
+        "created_at": _now(),
+    }
+    return _attempts(db).insert_one(doc).inserted_id
+
+
+def close_attempt(
+    *,
+    attempt_id: str,
+    diff_summary: str,
+    commit: str,
+    visible_pass: float,
+    val_pass: float,
+    per_section: Mapping[str, Any],
+    outcome: str,
+    observer_flags: list[Any],
+    db: Database | None = None,
+    embedder: Embedder | None = None,
+) -> None:
+    """Finish a running attempt: scores, outcome and (unless flagged) the embedding.
+
+    Same embedding rules as write_attempt(): a Voyage failure never raises, it sets
+    `needs_embedding` for backfill; flagged attempts are never embedded (I8). Raises LookupError if
+    the attempt isn't running (unknown id, already closed, or marked killed by a resume).
+    """
+    _require_str("attempt_id", attempt_id)
+    _require_str("commit", commit)
+    _require_str("outcome", outcome)
+    if not isinstance(diff_summary, str):
+        raise ValueError(f"diff_summary must be a string, got {diff_summary!r}")
+    _require_rate("visible_pass", visible_pass)
+    _require_rate("val_pass", val_pass)
+    if not isinstance(per_section, Mapping):
+        raise ValueError(f"per_section must be a mapping, got {per_section!r}")
+    if not isinstance(observer_flags, list):
+        raise ValueError(f"observer_flags must be a list, got {observer_flags!r}")
+
+    attempts = _attempts(db)
+    running = {"attempt_id": attempt_id, "status": RUNNING}
+    current = next(iter(attempts.find(running)), None)
+    if current is None:
+        raise LookupError(f"attempt {attempt_id!r} is not running")
+
+    fields: dict[str, Any] = {
+        "diff_summary": diff_summary,
+        "commit": commit,
+        "visible_pass": visible_pass,
+        "val_pass": val_pass,
+        "per_section": dict(per_section),
+        "outcome": outcome,
+        "observer_flags": observer_flags,
+        "status": CLOSED,
+        "closed_at": _now(),
+    }
+    if outcome != FLAGGED_OUTCOME:
+        vector = (embedder or get_embedder()).embed_document_or_none(
+            attempt_embedding_text(current["intent"], diff_summary)
+        )
+        if vector is None:
+            fields["needs_embedding"] = True
+        else:
+            fields["embedding"] = vector
+    # Filtering on status again makes this atomic against a concurrent mark_running_as_killed().
+    if attempts.update_one(running, {"$set": fields}).modified_count != 1:
+        raise LookupError(f"attempt {attempt_id!r} is no longer running")
+
+
+def mark_running_as_killed(session_id: str, *, db: Database | None = None) -> list[str]:
+    """Resume step: every attempt of the session still `running` was killed. Never scored.
+
+    Sets status and outcome to "killed" (no scores, no embedding), so the brief, memory and metrics
+    can exclude it by outcome. Returns the killed attempt ids; a second call returns [].
+    """
+    _require_str("session_id", session_id)
+    attempts = _attempts(db)
+    killed: list[str] = []
+    for doc in attempts.find({"session_id": session_id, "status": RUNNING}):
+        result = attempts.update_one(
+            {"_id": doc["_id"], "status": RUNNING},
+            {"$set": {"status": KILLED, "outcome": KILLED_OUTCOME, "closed_at": _now()}},
+        )
+        if result.modified_count == 1:
+            killed.append(doc["attempt_id"])
+    return killed
+
+
+def last_clean_commit(session_id: str, *, db: Database | None = None) -> str | None:
+    """Commit of the session's most recent closed, non-flagged attempt (None if there is none).
+
+    "Most recent" is the highest attempt `number`. On resume the workspace is reset to this commit.
+    """
+    _require_str("session_id", session_id)
+    clean = {"session_id": session_id, "status": CLOSED, "outcome": {"$ne": FLAGGED_OUTCOME}}
+    latest = _attempts(db).find(clean).sort("number", -1).limit(1)
+    doc = next(iter(latest), None)
+    return doc["commit"] if doc else None
 
 
 def backfill_embeddings(
