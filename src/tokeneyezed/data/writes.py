@@ -165,20 +165,28 @@ def backfill_embeddings(
     *, limit: int = 100, db: Database | None = None, embedder: Embedder | None = None
 ) -> int:
     """Embed attempts written while Voyage was failing. Returns how many were fixed."""
+    if type(limit) is not int or limit <= 0:
+        raise ValueError("limit must be a positive integer")
     attempts = _attempts(db)
     emb = embedder or get_embedder()
+    eligible = {
+        "needs_embedding": True,
+        "outcome": {"$ne": FLAGGED_OUTCOME},
+        "embedding": {"$exists": False},
+    }
     fixed = 0
-    for doc in attempts.find({"needs_embedding": True}).limit(limit):
+    for doc in attempts.find(eligible).limit(limit):
         vector = emb.embed_document_or_none(
             attempt_embedding_text(doc["intent"], doc["diff_summary"])
         )
         if vector is None:
             break  # Voyage is still down; try again later
-        attempts.update_one(
-            {"_id": doc["_id"]},
+        # Recheck eligibility atomically: the observer may flag it during embedding.
+        result = attempts.update_one(
+            {"_id": doc["_id"], **eligible},
             {"$set": {"embedding": vector}, "$unset": {"needs_embedding": ""}},
         )
-        fixed += 1
+        fixed += result.modified_count
     return fixed
 
 
