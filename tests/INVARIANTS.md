@@ -15,5 +15,5 @@ Every real check must prove it can see a violation (for example, a scanner test 
 | I5 | The pre-gate blocks edits to the scorer, test files, and hook configs (`.claude/`, `.codex/`). | Dharshan | unit-enforced for direct edits and recognized shell paths; runner isolation and live admission pending |
 | I6 | Hook configs and the agents' config dirs (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`) live outside the task workspace. | Julian | **enforced** (the Claude runner refuses to start otherwise) |
 | I7 | Runs B, H, and H-mem use the same pinned model, read from one shared config. | Julian | **enforced** (run files may override only name, agent, memory) |
-| I8 | A flagged attempt never reaches the brief, embeddings, `memory`, or metric history (it is still written to `attempts` for audit). | Aaron | skipped: needs brief builder + compactor |
+| I8 | A flagged attempt never reaches the brief, embeddings, `memory`, or metric history (it is still written to `attempts` for audit). | Aaron | **enforced** (metric side: `tests/controller/test_graph.py`) |
 | I9 | If the observer is unreachable, the shim blocks in the pre phase (fail closed) and allows in the post phase (fail open). | Dharshan | unit-enforced; live hook admission pending |

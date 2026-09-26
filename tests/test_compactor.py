@@ -1,5 +1,7 @@
 """Compactor. No network: a fake database, a fake summarizer, and a fake Voyage transport."""
 
+import http.client
+import json
 import urllib.error
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -332,3 +334,47 @@ def test_openrouter_rejects_malformed_responses(monkeypatch: pytest.MonkeyPatch,
     monkeypatch.setenv("OPENROUTER_API_KEY", "k")
     with pytest.raises(SummarizerError):
         OpenRouterSummarizer(transport=lambda p, k: body).summarize([attempt(1)])
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ConnectionResetError("peer dropped the connection"),  # from getresponse(), not URLError
+        http.client.IncompleteRead(b"partial"),
+        json.JSONDecodeError("Expecting value", "<html>", 0),  # a non-JSON 200 body
+    ],
+)
+def test_openrouter_retries_unwrapped_network_errors(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    responses: list = [error, or_body("ok")]
+
+    def transport(payload: dict, key: str) -> dict:
+        item = responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    assert (
+        OpenRouterSummarizer(transport=transport, sleep=lambda s: None).summarize([attempt(1)])
+        == "ok"
+    )
+
+
+def test_compact_never_raises_when_the_model_keeps_dropping_connections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Regression: a ConnectionResetError used to escape compact() and end the whole run.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+
+    def transport(payload: dict, key: str) -> dict:
+        raise ConnectionResetError("peer dropped the connection")
+
+    db = FakeDB()
+    for n in range(1, 4):
+        db["attempts"].insert_one(attempt(n))
+    summarizer = OpenRouterSummarizer(transport=transport, sleep=lambda s: None)
+    compactor = MongoCompactor(db=db, embedder=embedder(), summarizer=summarizer)
+    assert compactor.compact("S", "g1") is None
+    assert db["memory"].docs == []

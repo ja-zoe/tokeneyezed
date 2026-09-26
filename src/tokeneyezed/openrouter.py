@@ -1,12 +1,14 @@
 """The one OpenRouter client, shared by every model call in the harness (compactor, planner).
 
-Retries rate limits (429), server errors (5xx), and network errors with exponential backoff; any
-other HTTP error, or a response with no usable content, raises OpenRouterError. The transport is
-injectable so tests never touch the network.
+Retries rate limits (429), server errors (5xx), and network errors (including a dropped
+connection and a non-JSON reply) with exponential backoff; any other HTTP error, or a response with
+no usable content, raises OpenRouterError. Nothing else escapes, so callers need catch only that.
+The transport is injectable so tests never touch the network.
 """
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import time
@@ -78,7 +80,12 @@ class OpenRouterClient:
                     raise OpenRouterError(
                         f"OpenRouter rejected the request: HTTP {err.code}"
                     ) from err
-            except (urllib.error.URLError, TimeoutError):
+            except (OSError, http.client.HTTPException, ValueError):
+                # urllib wraps only some failures in URLError: a dropped connection surfaces as
+                # ConnectionResetError, a truncated reply as HTTPException, and a non-JSON body
+                # (a proxy error page, say) as JSONDecodeError. Retry them all, so callers only
+                # ever see OpenRouterError: the planner's fail-open and the compactor catch
+                # nothing else.
                 pass
             else:
                 return _content(body)
