@@ -22,7 +22,7 @@ Every command we should be able to run, who owns it, and whether it exists yet. 
 |---|---|---|
 | `python -m tokeneyezed.observer.service --workspace W --audit-log L --protect P [--port 8765]` | Start the observer service the hook shim talks to. Needs `TOKENEYEZED_OBSERVER_TOKEN`. Proposed alias: `tokeneyezed observe`. | ✅ (alias 📋) |
 | `tokeneyezed replay --session B-... --events runs/B/events.jsonl --workspace /absolute/task-repo [--protect /absolute/scorer]` | Replay neutral observer-event JSONL through the deterministic pre-gate and count what it would have caught. Read-only; evaluates pre-tool events only. | 🔨 reader implemented; baseline capture needs Gunjan |
-| `tokeneyezed rules learn` | Cluster flags into candidate rules and replay-test them (S1; first thing cut if behind). | 📋 |
+| `tokeneyezed rules learn [--min-support N] [--limit N]` | Cluster repeated blocked pre-tool inputs, replay candidates against blocked, allowed, and unlabeled events, and activate only rules with at least N blocked matches and zero allowed or unlabeled matches. Stores results in `rules`; the Mongo-backed observer loads active rules at startup. Run `db init` first. | 🔨 (needs `MONGODB_URI` and labeled event history) |
 
 ## Data (Aaron)
 

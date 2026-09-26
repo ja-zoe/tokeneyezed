@@ -34,7 +34,7 @@ from tokeneyezed.data.writes import backfill_embeddings
 # Collections that need no search index but must exist (docs/master-plan.md, "MongoDB data model").
 # The LangGraph saver creates its own, and the eval package creates the held-out results collection
 # (invariant I3: nothing outside eval/ may even name it).
-PLAIN_COLLECTIONS = ("sessions", "events", "goals", "attempts")
+PLAIN_COLLECTIONS = ("sessions", "events", "goals", "attempts", "rules")
 
 # collection -> [(keys, options)]: the regular indexes from the data model.
 REGULAR_INDEXES: dict[str, list[tuple[list[tuple[str, int]], dict[str, Any]]]] = {
@@ -48,6 +48,18 @@ REGULAR_INDEXES: dict[str, list[tuple[list[tuple[str, int]], dict[str, Any]]]] =
     "attempts": [
         ([("attempt_id", ASCENDING)], {}),
         ([("session_id", ASCENDING), ("goal_id", ASCENDING), ("number", DESCENDING)], {}),
+    ],
+    "rules": [
+        (
+            [
+                ("tool", ASCENDING),
+                ("check_type", ASCENDING),
+                ("pattern", ASCENDING),
+                ("version", ASCENDING),
+            ],
+            {"unique": True},
+        ),
+        ([("status", ASCENDING)], {}),
     ],
 }
 
