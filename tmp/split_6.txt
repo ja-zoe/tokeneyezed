@@ -1,0 +1,29 @@
+tests/contracts/test_ports.py::test_attempt_runner[FakeRunner]
+tests/contracts/test_ports.py::test_compactor[mongo_compactor]
+tests/controller/test_cli.py::test_resume_refuses_without_real_ports
+tests/eval/test_eval_cli.py::test_split_honors_seed_flag
+tests/eval/test_scorer.py::test_attempt_mode_contract
+tests/eval/test_split.py::test_split_counts_and_manifest
+tests/test_brief.py::test_best_attempt_excludes_flagged_attempts
+tests/test_brief.py::test_skills_and_memory_counts
+tests/test_compactor.py::test_a_model_failure_writes_nothing_and_never_raises
+tests/test_compactor.py::test_openrouter_needs_a_key
+tests/test_embeddings.py::test_rate_limiter_waits_when_request_count_is_full
+tests/test_embeddings.py::test_query_embedding_is_cached
+tests/test_embeddings.py::test_malformed_responses_do_not_escape_write_fallback[body4]
+tests/test_invariants.py::test_i1_hidden_splits_unreachable_from_task_workspace
+tests/test_ledger.py::test_open_attempt_requires_every_field[session_id]
+tests/test_ledger.py::test_open_attempt_rejects_a_bad_number[True]
+tests/test_ledger.py::test_kill_does_not_report_an_attempt_that_closed_in_the_meantime
+tests/test_observer.py::test_forbidden_shell[Remove-Item -Recurse src]
+tests/test_observer.py::test_protected_edit[test_renderer.py]
+tests/test_retrieval_eval.py::test_hand_picked_attempts_on_the_same_section_are_relevant
+tests/test_retrieval_eval.py::test_recall_ignores_hits_beyond_rank_5
+tests/test_retrieval_eval.py::test_only_transient_auto_errors_are_retried[Got non OK status from response, status code: 503-True]
+tests/test_reviewer.py::test_score_gap[current2-previous2-False]
+tests/test_reviewer.py::test_invalid_scores_fail_closed[1.1]
+tests/test_writes.py::test_insert_event_requires_every_field[session_id]
+tests/test_writes.py::test_insert_event_rejects_bad_values[verdict-]
+tests/test_writes.py::test_write_attempt_requires_every_field[val_pass]
+tests/test_writes.py::test_write_attempt_rejects_bad_values[commit-]
+tests/test_writes.py::test_backfill_skips_a_queued_attempt_flagged_after_write

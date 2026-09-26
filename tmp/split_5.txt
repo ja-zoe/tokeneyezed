@@ -1,0 +1,29 @@
+tests/contracts/test_ports.py::test_planner[FakePlanner]
+tests/contracts/test_ports.py::test_compactor[FakeCompactor]
+tests/controller/test_cli.py::test_fake_run_completes
+tests/eval/test_eval_cli.py::test_split_writes_visible_inside_and_hidden_outside
+tests/eval/test_eval_cli.py::test_report_stub_names_sessions
+tests/eval/test_scorer.py::test_missing_mode_arguments_exit[argv2]
+tests/test_brief.py::test_failed_attempts_are_scoped_to_session_and_goal_on_both_search_sides
+tests/test_brief.py::test_embedding_failure_falls_back_to_keyword_search
+tests/test_compactor.py::test_a_long_backlog_is_compacted_in_batches_oldest_first
+tests/test_compactor.py::test_openrouter_request_shape
+tests/test_compactor_ledger.py::test_compacts_only_what_the_ledger_marks_closed_and_unflagged
+tests/test_embeddings.py::test_write_path_returns_none_instead_of_raising
+tests/test_embeddings.py::test_malformed_responses_do_not_escape_write_fallback[body3]
+tests/test_invariants.py::test_i3_harness_never_reads_test_evals
+tests/test_ledger.py::test_open_attempt_writes_a_running_doc_without_scores_or_embedding
+tests/test_ledger.py::test_open_attempt_rejects_a_bad_number[1.5]
+tests/test_ledger.py::test_close_loses_the_race_against_a_resume_that_kills_the_attempt
+tests/test_observer.py::test_forbidden_shell[git reset --hard]
+tests/test_observer.py::test_protected_edit[src/../tests/cases.json]
+tests/test_observer.py::test_http_roundtrip_and_auth
+tests/test_retrieval_eval.py::test_recall_at_5[ranked5-relevant5-0.0]
+tests/test_retrieval_eval.py::test_only_transient_auto_errors_are_retried[Rate limit exceeded-True]
+tests/test_reviewer.py::test_score_gap[current1-previous1-False]
+tests/test_reviewer.py::test_invalid_scores_fail_closed[-0.1]
+tests/test_writes.py::test_insert_event_defaults_ts_to_now
+tests/test_writes.py::test_insert_event_rejects_bad_values[tool-Bash]
+tests/test_writes.py::test_write_attempt_requires_every_field[visible_pass]
+tests/test_writes.py::test_write_attempt_rejects_bad_values[observer_flags-None]
+tests/test_writes.py::test_backfill_rejects_unbounded_or_invalid_limit[1.5]

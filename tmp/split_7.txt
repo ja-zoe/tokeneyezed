@@ -1,0 +1,29 @@
+tests/contracts/test_ports.py::test_attempt_runner[claude_runner_on_fake_binary]
+tests/controller/test_claude_runner.py::test_command_and_environment
+tests/controller/test_graph.py::test_happy_path_completes_every_goal
+tests/eval/test_eval_cli.py::test_split_refuses_hidden_dir_inside_workspace
+tests/eval/test_scorer.py::test_heldout_mode_emits_test_pass_only
+tests/eval/test_split.py::test_split_is_a_partition_of_the_spec
+tests/test_brief.py::test_best_attempt_ranks_by_the_goals_section_score_not_overall
+tests/test_compactor.py::test_satisfies_the_controllers_compactor_port
+tests/test_compactor.py::test_a_blank_summary_writes_nothing
+tests/test_compactor.py::test_openrouter_retries_429_then_succeeds
+tests/test_embeddings.py::test_rate_limiter_waits_when_token_count_is_full
+tests/test_embeddings.py::test_payload_pins_model_dimension_and_input_type
+tests/test_embeddings.py::test_malformed_responses_do_not_escape_write_fallback[body5]
+tests/test_invariants.py::test_i2_task_workspace_outside_repo
+tests/test_ledger.py::test_open_attempt_requires_every_field[attempt_id]
+tests/test_ledger.py::test_open_attempt_rejects_a_bad_number[1]
+tests/test_observer.py::test_malformed_service_response_is_rejected
+tests/test_observer.py::test_forbidden_shell[echo bad > tests/test_renderer.py]
+tests/test_observer.py::test_protected_edit[.git/config]
+tests/test_retrieval_eval.py::test_only_earlier_attempts_count_and_never_the_query_itself
+tests/test_retrieval_eval.py::test_recall_needs_relevant_items
+tests/test_retrieval_eval.py::test_only_transient_auto_errors_are_retried[Got non OK status from response, status code: 429-True]
+tests/test_reviewer.py::test_score_gap[current3-previous3-True]
+tests/test_reviewer.py::test_invalid_scores_fail_closed[True]
+tests/test_writes.py::test_insert_event_requires_every_field[attempt_id]
+tests/test_writes.py::test_write_attempt_writes_every_field_and_the_embedding
+tests/test_writes.py::test_write_attempt_requires_every_field[per_section]
+tests/test_writes.py::test_write_attempt_rejects_bad_values[parent_attempt-]
+tests/test_writes.py::test_backfill_rechecks_flag_before_storing_vector

@@ -1,0 +1,28 @@
+tests/contracts/test_ports.py::test_reviewer[None-FakeReviewer]
+tests/controller/test_claude_runner.py::test_blocked_calls_ignores_allowed_hooks_and_non_json
+tests/controller/test_graph.py::test_flagged_attempts_stay_out_of_memory_and_streaks
+tests/eval/test_eval_cli.py::test_score_one_split[visible-2]
+tests/eval/test_scorer.py::test_empty_split_scores_zero
+tests/eval/test_split.py::test_sections_match_base_toml
+tests/test_brief.py::test_brief_builder_port_renders_the_brief_for_a_goal
+tests/test_compactor.py::test_embeds_the_summary_as_a_document_with_the_shared_helper
+tests/test_compactor.py::test_voyage_failure_still_stores_the_summary_and_flags_it_for_backfill
+tests/test_compactor.py::test_openrouter_does_not_retry_client_errors[400]
+tests/test_embeddings.py::test_budget_stops_before_calling_voyage
+tests/test_embeddings.py::test_invalid_input_type_is_rejected
+tests/test_embeddings.py::test_malformed_responses_do_not_escape_write_fallback[body7]
+tests/test_invariants.py::test_i5_pre_gate_blocks_tampering
+tests/test_ledger.py::test_open_attempt_requires_every_field[goal_id]
+tests/test_ledger.py::test_close_attempt_survives_a_voyage_failure
+tests/test_observer.py::test_forbidden_shell[pip install markdown-it-py]
+tests/test_observer.py::test_forbidden_shell[git clean -fd]
+tests/test_observer.py::test_allowed_work_and_fail_closed
+tests/test_retrieval_eval.py::test_section_comes_from_goals_then_the_goal_id_and_is_cached
+tests/test_retrieval_eval.py::test_auto_index_uses_embed_models_model_on_the_same_text
+tests/test_retrieval_eval.py::test_only_transient_auto_errors_are_retried[Path x needs to be indexed as filter-False]
+tests/test_reviewer.py::test_score_gap[current5-previous5-False]
+tests/test_reviewer.py::test_failed_attempt_and_stateless_reviews
+tests/test_writes.py::test_insert_event_requires_every_field[phase]
+tests/test_writes.py::test_write_attempt_requires_every_field[attempt_id]
+tests/test_writes.py::test_write_attempt_requires_every_field[observer_flags]
+tests/test_writes.py::test_voyage_failure_still_writes_the_attempt_and_flags_it_for_backfill

@@ -1,0 +1,1570 @@
+[
+ {
+  "markdown": "  - foo\n\n\tbar\n",
+  "html": "<ul>\n<li>\n<p>foo</p>\n<p>bar</p>\n</li>\n</ul>\n",
+  "example": 4,
+  "start_line": 382,
+  "end_line": 393,
+  "section": "Tabs"
+ },
+ {
+  "markdown": ">\t\tfoo\n",
+  "html": "<blockquote>\n<pre><code>  foo\n</code></pre>\n</blockquote>\n",
+  "example": 6,
+  "start_line": 418,
+  "end_line": 425,
+  "section": "Tabs"
+ },
+ {
+  "markdown": " - foo\n   - bar\n\t - baz\n",
+  "html": "<ul>\n<li>foo\n<ul>\n<li>bar\n<ul>\n<li>baz</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n",
+  "example": 9,
+  "start_line": 448,
+  "end_line": 464,
+  "section": "Tabs"
+ },
+ {
+  "markdown": "foo\\\nbar\n",
+  "html": "<p>foo<br />\nbar</p>\n",
+  "example": 16,
+  "start_line": 543,
+  "end_line": 549,
+  "section": "Backslash escapes"
+ },
+ {
+  "markdown": "~~~\n\\[\\]\n~~~\n",
+  "html": "<pre><code>\\[\\]\n</code></pre>\n",
+  "example": 19,
+  "start_line": 570,
+  "end_line": 577,
+  "section": "Backslash escapes"
+ },
+ {
+  "markdown": "<a href=\"/bar\\/)\">\n",
+  "html": "<a href=\"/bar\\/)\">\n",
+  "example": 21,
+  "start_line": 587,
+  "end_line": 591,
+  "section": "Backslash escapes"
+ },
+ {
+  "markdown": "``` foo\\+bar\nfoo\n```\n",
+  "html": "<pre><code class=\"language-foo+bar\">foo\n</code></pre>\n",
+  "example": 24,
+  "start_line": 613,
+  "end_line": 620,
+  "section": "Backslash escapes"
+ },
+ {
+  "markdown": "<a href=\"&ouml;&ouml;.html\">\n",
+  "html": "<a href=\"&ouml;&ouml;.html\">\n",
+  "example": 31,
+  "start_line": 728,
+  "end_line": 732,
+  "section": "Entity and numeric character references"
+ },
+ {
+  "markdown": "``` f&ouml;&ouml;\nfoo\n```\n",
+  "html": "<pre><code class=\"language-f\u00f6\u00f6\">foo\n</code></pre>\n",
+  "example": 34,
+  "start_line": 751,
+  "end_line": 758,
+  "section": "Entity and numeric character references"
+ },
+ {
+  "markdown": "`f&ouml;&ouml;`\n",
+  "html": "<p><code>f&amp;ouml;&amp;ouml;</code></p>\n",
+  "example": 35,
+  "start_line": 764,
+  "end_line": 768,
+  "section": "Entity and numeric character references"
+ },
+ {
+  "markdown": "&#42;foo&#42;\n*foo*\n",
+  "html": "<p>*foo*\n<em>foo</em></p>\n",
+  "example": 37,
+  "start_line": 783,
+  "end_line": 789,
+  "section": "Entity and numeric character references"
+ },
+ {
+  "markdown": "foo&#10;&#10;bar\n",
+  "html": "<p>foo\n\nbar</p>\n",
+  "example": 39,
+  "start_line": 802,
+  "end_line": 808,
+  "section": "Entity and numeric character references"
+ },
+ {
+  "markdown": "+++\n",
+  "html": "<p>+++</p>\n",
+  "example": 44,
+  "start_line": 892,
+  "end_line": 896,
+  "section": "Thematic breaks"
+ },
+ {
+  "markdown": "_____________________________________\n",
+  "html": "<hr />\n",
+  "example": 50,
+  "start_line": 953,
+  "end_line": 957,
+  "section": "Thematic breaks"
+ },
+ {
+  "markdown": " **  * ** * ** * **\n",
+  "html": "<hr />\n",
+  "example": 52,
+  "start_line": 969,
+  "end_line": 973,
+  "section": "Thematic breaks"
+ },
+ {
+  "markdown": "-     -      -      -\n",
+  "html": "<hr />\n",
+  "example": 53,
+  "start_line": 976,
+  "end_line": 980,
+  "section": "Thematic breaks"
+ },
+ {
+  "markdown": "Foo\n***\nbar\n",
+  "html": "<p>Foo</p>\n<hr />\n<p>bar</p>\n",
+  "example": 58,
+  "start_line": 1036,
+  "end_line": 1044,
+  "section": "Thematic breaks"
+ },
+ {
+  "markdown": "Foo\n---\nbar\n",
+  "html": "<h2>Foo</h2>\n<p>bar</p>\n",
+  "example": 59,
+  "start_line": 1053,
+  "end_line": 1060,
+  "section": "Thematic breaks"
+ },
+ {
+  "markdown": "# foo *bar* \\*baz\\*\n",
+  "html": "<h1>foo <em>bar</em> *baz*</h1>\n",
+  "example": 66,
+  "start_line": 1167,
+  "end_line": 1171,
+  "section": "ATX headings"
+ },
+ {
+  "markdown": " ### foo\n  ## foo\n   # foo\n",
+  "html": "<h3>foo</h3>\n<h2>foo</h2>\n<h1>foo</h1>\n",
+  "example": 68,
+  "start_line": 1185,
+  "end_line": 1193,
+  "section": "ATX headings"
+ },
+ {
+  "markdown": "    # foo\n",
+  "html": "<pre><code># foo\n</code></pre>\n",
+  "example": 69,
+  "start_line": 1198,
+  "end_line": 1203,
+  "section": "ATX headings"
+ },
+ {
+  "markdown": "### foo ###     \n",
+  "html": "<h3>foo</h3>\n",
+  "example": 73,
+  "start_line": 1239,
+  "end_line": 1243,
+  "section": "ATX headings"
+ },
+ {
+  "markdown": "### foo ### b\n",
+  "html": "<h3>foo ### b</h3>\n",
+  "example": 74,
+  "start_line": 1250,
+  "end_line": 1254,
+  "section": "ATX headings"
+ },
+ {
+  "markdown": "### foo \\###\n## foo #\\##\n# foo \\#\n",
+  "html": "<h3>foo ###</h3>\n<h2>foo ###</h2>\n<h1>foo #</h1>\n",
+  "example": 76,
+  "start_line": 1269,
+  "end_line": 1277,
+  "section": "ATX headings"
+ },
+ {
+  "markdown": "Foo *bar*\n=========\n\nFoo *bar*\n---------\n",
+  "html": "<h1>Foo <em>bar</em></h1>\n<h2>Foo <em>bar</em></h2>\n",
+  "example": 80,
+  "start_line": 1347,
+  "end_line": 1356,
+  "section": "Setext headings"
+ },
+ {
+  "markdown": "`Foo\n----\n`\n\n<a title=\"a lot\n---\nof dashes\"/>\n",
+  "html": "<h2>`Foo</h2>\n<p>`</p>\n<h2>&lt;a title=&quot;a lot</h2>\n<p>of dashes&quot;/&gt;</p>\n",
+  "example": 91,
+  "start_line": 1497,
+  "end_line": 1510,
+  "section": "Setext headings"
+ },
+ {
+  "markdown": "Foo\nBar\n---\n",
+  "html": "<h2>Foo\nBar</h2>\n",
+  "example": 95,
+  "start_line": 1555,
+  "end_line": 1562,
+  "section": "Setext headings"
+ },
+ {
+  "markdown": "---\n---\n",
+  "html": "<hr />\n<hr />\n",
+  "example": 98,
+  "start_line": 1597,
+  "end_line": 1603,
+  "section": "Setext headings"
+ },
+ {
+  "markdown": "    foo\n---\n",
+  "html": "<pre><code>foo\n</code></pre>\n<hr />\n",
+  "example": 100,
+  "start_line": 1617,
+  "end_line": 1624,
+  "section": "Setext headings"
+ },
+ {
+  "markdown": "Foo\n\nbar\n---\nbaz\n",
+  "html": "<p>Foo</p>\n<h2>bar</h2>\n<p>baz</p>\n",
+  "example": 103,
+  "start_line": 1672,
+  "end_line": 1682,
+  "section": "Setext headings"
+ },
+ {
+  "markdown": "Foo\nbar\n* * *\nbaz\n",
+  "html": "<p>Foo\nbar</p>\n<hr />\n<p>baz</p>\n",
+  "example": 105,
+  "start_line": 1706,
+  "end_line": 1716,
+  "section": "Setext headings"
+ },
+ {
+  "markdown": "Foo\nbar\n\\---\nbaz\n",
+  "html": "<p>Foo\nbar\n---\nbaz</p>\n",
+  "example": 106,
+  "start_line": 1721,
+  "end_line": 1731,
+  "section": "Setext headings"
+ },
+ {
+  "markdown": "    a simple\n      indented code block\n",
+  "html": "<pre><code>a simple\n  indented code block\n</code></pre>\n",
+  "example": 107,
+  "start_line": 1749,
+  "end_line": 1756,
+  "section": "Indented code blocks"
+ },
+ {
+  "markdown": "1.  foo\n\n    - bar\n",
+  "html": "<ol>\n<li>\n<p>foo</p>\n<ul>\n<li>bar</li>\n</ul>\n</li>\n</ol>\n",
+  "example": 109,
+  "start_line": 1777,
+  "end_line": 1790,
+  "section": "Indented code blocks"
+ },
+ {
+  "markdown": "    chunk1\n      \n      chunk2\n",
+  "html": "<pre><code>chunk1\n  \n  chunk2\n</code></pre>\n",
+  "example": 112,
+  "start_line": 1836,
+  "end_line": 1845,
+  "section": "Indented code blocks"
+ },
+ {
+  "markdown": "# Heading\n    foo\nHeading\n------\n    foo\n----\n",
+  "html": "<h1>Heading</h1>\n<pre><code>foo\n</code></pre>\n<h2>Heading</h2>\n<pre><code>foo\n</code></pre>\n<hr />\n",
+  "example": 115,
+  "start_line": 1878,
+  "end_line": 1893,
+  "section": "Indented code blocks"
+ },
+ {
+  "markdown": "``\nfoo\n``\n",
+  "html": "<p><code>foo</code></p>\n",
+  "example": 121,
+  "start_line": 2007,
+  "end_line": 2013,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": "````\naaa\n```\n``````\n",
+  "html": "<pre><code>aaa\n```\n</code></pre>\n",
+  "example": 124,
+  "start_line": 2044,
+  "end_line": 2053,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": "`````\n\n```\naaa\n",
+  "html": "<pre><code>\n```\naaa\n</code></pre>\n",
+  "example": 127,
+  "start_line": 2078,
+  "end_line": 2088,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": "```\n```\n",
+  "html": "<pre><code></code></pre>\n",
+  "example": 130,
+  "start_line": 2121,
+  "end_line": 2126,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": "   ```\n   aaa\n    aaa\n  aaa\n   ```\n",
+  "html": "<pre><code>aaa\n aaa\naaa\n</code></pre>\n",
+  "example": 133,
+  "start_line": 2159,
+  "end_line": 2170,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": "```\naaa\n  ```\n",
+  "html": "<pre><code>aaa\n</code></pre>\n",
+  "example": 135,
+  "start_line": 2190,
+  "end_line": 2197,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": "foo\n---\n~~~\nbar\n~~~\n# baz\n",
+  "html": "<h2>foo</h2>\n<pre><code>bar\n</code></pre>\n<h1>baz</h1>\n",
+  "example": 141,
+  "start_line": 2266,
+  "end_line": 2278,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": "~~~ aa ``` ~~~\nfoo\n~~~\n",
+  "html": "<pre><code class=\"language-aa\">foo\n</code></pre>\n",
+  "example": 146,
+  "start_line": 2337,
+  "end_line": 2344,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": "```\n``` aaa\n```\n",
+  "html": "<pre><code>``` aaa\n</code></pre>\n",
+  "example": 147,
+  "start_line": 2349,
+  "end_line": 2356,
+  "section": "Fenced code blocks"
+ },
+ {
+  "markdown": " <div>\n  *hello*\n         <foo><a>\n",
+  "html": " <div>\n  *hello*\n         <foo><a>\n",
+  "example": 150,
+  "start_line": 2479,
+  "end_line": 2487,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "</div>\n*foo*\n",
+  "html": "</div>\n*foo*\n",
+  "example": 151,
+  "start_line": 2492,
+  "end_line": 2498,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "<div>\n*foo*\n\n*bar*\n",
+  "html": "<div>\n*foo*\n<p><em>bar</em></p>\n",
+  "example": 155,
+  "start_line": 2542,
+  "end_line": 2551,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "<del>\n\n*foo*\n\n</del>\n",
+  "html": "<del>\n<p><em>foo</em></p>\n</del>\n",
+  "example": 167,
+  "start_line": 2697,
+  "end_line": 2707,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "<del>*foo*</del>\n",
+  "html": "<p><del><em>foo</em></del></p>\n",
+  "example": 168,
+  "start_line": 2715,
+  "end_line": 2719,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "<textarea>\n\n*foo*\n\n_bar_\n\n</textarea>\n",
+  "html": "<textarea>\n\n*foo*\n\n_bar_\n\n</textarea>\n",
+  "example": 171,
+  "start_line": 2771,
+  "end_line": 2787,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "<style>p{color:red;}</style>\n*foo*\n",
+  "html": "<style>p{color:red;}</style>\n<p><em>foo</em></p>\n",
+  "example": 176,
+  "start_line": 2856,
+  "end_line": 2862,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "  <!-- foo -->\n\n    <!-- foo -->\n",
+  "html": "  <!-- foo -->\n<pre><code>&lt;!-- foo --&gt;\n</code></pre>\n",
+  "example": 183,
+  "start_line": 2970,
+  "end_line": 2978,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "Foo\n<div>\nbar\n</div>\n",
+  "html": "<p>Foo</p>\n<div>\nbar\n</div>\n",
+  "example": 185,
+  "start_line": 2995,
+  "end_line": 3005,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "Foo\n<a href=\"bar\">\nbaz\n",
+  "html": "<p>Foo\n<a href=\"bar\">\nbaz</p>\n",
+  "example": 187,
+  "start_line": 3027,
+  "end_line": 3035,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "<div>\n*Emphasized* text.\n</div>\n",
+  "html": "<div>\n*Emphasized* text.\n</div>\n",
+  "example": 189,
+  "start_line": 3081,
+  "end_line": 3089,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "<table>\n\n<tr>\n\n<td>\nHi\n</td>\n\n</tr>\n\n</table>\n",
+  "html": "<table>\n<tr>\n<td>\nHi\n</td>\n</tr>\n</table>\n",
+  "example": 190,
+  "start_line": 3103,
+  "end_line": 3123,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "<table>\n\n  <tr>\n\n    <td>\n      Hi\n    </td>\n\n  </tr>\n\n</table>\n",
+  "html": "<table>\n  <tr>\n<pre><code>&lt;td&gt;\n  Hi\n&lt;/td&gt;\n</code></pre>\n  </tr>\n</table>\n",
+  "example": 191,
+  "start_line": 3130,
+  "end_line": 3151,
+  "section": "HTML blocks"
+ },
+ {
+  "markdown": "[foo]: /url \"title\"\n\n[foo]\n",
+  "html": "<p><a href=\"/url\" title=\"title\">foo</a></p>\n",
+  "example": 192,
+  "start_line": 3179,
+  "end_line": 3185,
+  "section": "Link reference definitions"
+ },
+ {
+  "markdown": "   [foo]: \n      /url  \n           'the title'  \n\n[foo]\n",
+  "html": "<p><a href=\"/url\" title=\"the title\">foo</a></p>\n",
+  "example": 193,
+  "start_line": 3188,
+  "end_line": 3196,
+  "section": "Link reference definitions"
+ },
+ {
+  "markdown": "[Foo*bar\\]]:my_(url) 'title (with parens)'\n\n[Foo*bar\\]]\n",
+  "html": "<p><a href=\"my_(url)\" title=\"title (with parens)\">Foo*bar]</a></p>\n",
+  "example": 194,
+  "start_line": 3199,
+  "end_line": 3205,
+  "section": "Link reference definitions"
+ },
+ {
+  "markdown": "[foo]:\n\n[foo]\n",
+  "html": "<p>[foo]:</p>\n<p>[foo]</p>\n",
+  "example": 199,
+  "start_line": 3267,
+  "end_line": 3274,
+  "section": "Link reference definitions"
+ },
+ {
+  "markdown": "[foo]: <>\n\n[foo]\n",
+  "html": "<p><a href=\"\">foo</a></p>\n",
+  "example": 200,
+  "start_line": 3279,
+  "end_line": 3285,
+  "section": "Link reference definitions"
+ },
+ {
+  "markdown": "Foo\n[bar]: /baz\n\n[bar]\n",
+  "html": "<p>Foo\n[bar]: /baz</p>\n<p>[bar]</p>\n",
+  "example": 213,
+  "start_line": 3433,
+  "end_line": 3442,
+  "section": "Link reference definitions"
+ },
+ {
+  "markdown": "# [Foo]\n[foo]: /url\n> bar\n",
+  "html": "<h1><a href=\"/url\">Foo</a></h1>\n<blockquote>\n<p>bar</p>\n</blockquote>\n",
+  "example": 214,
+  "start_line": 3448,
+  "end_line": 3457,
+  "section": "Link reference definitions"
+ },
+ {
+  "markdown": "[foo]\n\n> [foo]: /url\n",
+  "html": "<p><a href=\"/url\">foo</a></p>\n<blockquote>\n</blockquote>\n",
+  "example": 218,
+  "start_line": 3503,
+  "end_line": 3511,
+  "section": "Link reference definitions"
+ },
+ {
+  "markdown": "  aaa\n bbb\n",
+  "html": "<p>aaa\nbbb</p>\n",
+  "example": 222,
+  "start_line": 3566,
+  "end_line": 3572,
+  "section": "Paragraphs"
+ },
+ {
+  "markdown": "aaa     \nbbb     \n",
+  "html": "<p>aaa<br />\nbbb</p>\n",
+  "example": 226,
+  "start_line": 3615,
+  "end_line": 3621,
+  "section": "Paragraphs"
+ },
+ {
+  "markdown": "> foo\n    - bar\n",
+  "html": "<blockquote>\n<p>foo\n- bar</p>\n</blockquote>\n",
+  "example": 238,
+  "start_line": 3867,
+  "end_line": 3875,
+  "section": "Block quotes"
+ },
+ {
+  "markdown": "> foo\n\n> bar\n",
+  "html": "<blockquote>\n<p>foo</p>\n</blockquote>\n<blockquote>\n<p>bar</p>\n</blockquote>\n",
+  "example": 242,
+  "start_line": 3924,
+  "end_line": 3935,
+  "section": "Block quotes"
+ },
+ {
+  "markdown": "> foo\n> bar\n",
+  "html": "<blockquote>\n<p>foo\nbar</p>\n</blockquote>\n",
+  "example": 243,
+  "start_line": 3946,
+  "end_line": 3954,
+  "section": "Block quotes"
+ },
+ {
+  "markdown": "> foo\n>\n> bar\n",
+  "html": "<blockquote>\n<p>foo</p>\n<p>bar</p>\n</blockquote>\n",
+  "example": 244,
+  "start_line": 3959,
+  "end_line": 3968,
+  "section": "Block quotes"
+ },
+ {
+  "markdown": "> bar\nbaz\n",
+  "html": "<blockquote>\n<p>bar\nbaz</p>\n</blockquote>\n",
+  "example": 247,
+  "start_line": 4005,
+  "end_line": 4013,
+  "section": "Block quotes"
+ },
+ {
+  "markdown": "> > > foo\nbar\n",
+  "html": "<blockquote>\n<blockquote>\n<blockquote>\n<p>foo\nbar</p>\n</blockquote>\n</blockquote>\n</blockquote>\n",
+  "example": 250,
+  "start_line": 4044,
+  "end_line": 4056,
+  "section": "Block quotes"
+ },
+ {
+  "markdown": ">     code\n\n>    not code\n",
+  "html": "<blockquote>\n<pre><code>code\n</code></pre>\n</blockquote>\n<blockquote>\n<p>not code</p>\n</blockquote>\n",
+  "example": 252,
+  "start_line": 4081,
+  "end_line": 4093,
+  "section": "Block quotes"
+ },
+ {
+  "markdown": "- one\n\n two\n",
+  "html": "<ul>\n<li>one</li>\n</ul>\n<p>two</p>\n",
+  "example": 255,
+  "start_line": 4190,
+  "end_line": 4199,
+  "section": "List items"
+ },
+ {
+  "markdown": "- one\n\n  two\n",
+  "html": "<ul>\n<li>\n<p>one</p>\n<p>two</p>\n</li>\n</ul>\n",
+  "example": 256,
+  "start_line": 4202,
+  "end_line": 4213,
+  "section": "List items"
+ },
+ {
+  "markdown": "   > > 1.  one\n>>\n>>     two\n",
+  "html": "<blockquote>\n<blockquote>\n<ol>\n<li>\n<p>one</p>\n<p>two</p>\n</li>\n</ol>\n</blockquote>\n</blockquote>\n",
+  "example": 259,
+  "start_line": 4251,
+  "end_line": 4266,
+  "section": "List items"
+ },
+ {
+  "markdown": "123456789. ok\n",
+  "html": "<ol start=\"123456789\">\n<li>ok</li>\n</ol>\n",
+  "example": 265,
+  "start_line": 4377,
+  "end_line": 4383,
+  "section": "List items"
+ },
+ {
+  "markdown": "- foo\n\n      bar\n",
+  "html": "<ul>\n<li>\n<p>foo</p>\n<pre><code>bar\n</code></pre>\n</li>\n</ul>\n",
+  "example": 270,
+  "start_line": 4438,
+  "end_line": 4450,
+  "section": "List items"
+ },
+ {
+  "markdown": "  10.  foo\n\n           bar\n",
+  "html": "<ol start=\"10\">\n<li>\n<p>foo</p>\n<pre><code>bar\n</code></pre>\n</li>\n</ol>\n",
+  "example": 271,
+  "start_line": 4455,
+  "end_line": 4467,
+  "section": "List items"
+ },
+ {
+  "markdown": "1.     indented code\n\n   paragraph\n\n       more code\n",
+  "html": "<ol>\n<li>\n<pre><code>indented code\n</code></pre>\n<p>paragraph</p>\n<pre><code>more code\n</code></pre>\n</li>\n</ol>\n",
+  "example": 273,
+  "start_line": 4489,
+  "end_line": 4505,
+  "section": "List items"
+ },
+ {
+  "markdown": "-   \n  foo\n",
+  "html": "<ul>\n<li>foo</li>\n</ul>\n",
+  "example": 279,
+  "start_line": 4618,
+  "end_line": 4625,
+  "section": "List items"
+ },
+ {
+  "markdown": "foo\n*\n\nfoo\n1.\n",
+  "html": "<p>foo\n*</p>\n<p>foo\n1.</p>\n",
+  "example": 285,
+  "start_line": 4701,
+  "end_line": 4712,
+  "section": "List items"
+ },
+ {
+  "markdown": " 1.  A paragraph\n     with two lines.\n\n         indented code\n\n     > A block quote.\n",
+  "html": "<ol>\n<li>\n<p>A paragraph\nwith two lines.</p>\n<pre><code>indented code\n</code></pre>\n<blockquote>\n<p>A block quote.</p>\n</blockquote>\n</li>\n</ol>\n",
+  "example": 286,
+  "start_line": 4723,
+  "end_line": 4742,
+  "section": "List items"
+ },
+ {
+  "markdown": "- foo\n  - bar\n    - baz\n      - boo\n",
+  "html": "<ul>\n<li>foo\n<ul>\n<li>bar\n<ul>\n<li>baz\n<ul>\n<li>boo</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n",
+  "example": 294,
+  "start_line": 4907,
+  "end_line": 4928,
+  "section": "List items"
+ },
+ {
+  "markdown": "- foo\n - bar\n  - baz\n   - boo\n",
+  "html": "<ul>\n<li>foo</li>\n<li>bar</li>\n<li>baz</li>\n<li>boo</li>\n</ul>\n",
+  "example": 295,
+  "start_line": 4933,
+  "end_line": 4945,
+  "section": "List items"
+ },
+ {
+  "markdown": "- - foo\n",
+  "html": "<ul>\n<li>\n<ul>\n<li>foo</li>\n</ul>\n</li>\n</ul>\n",
+  "example": 298,
+  "start_line": 4981,
+  "end_line": 4991,
+  "section": "List items"
+ },
+ {
+  "markdown": "1. - 2. foo\n",
+  "html": "<ol>\n<li>\n<ul>\n<li>\n<ol start=\"2\">\n<li>foo</li>\n</ol>\n</li>\n</ul>\n</li>\n</ol>\n",
+  "example": 299,
+  "start_line": 4994,
+  "end_line": 5008,
+  "section": "List items"
+ },
+ {
+  "markdown": "Foo\n- bar\n- baz\n",
+  "html": "<p>Foo</p>\n<ul>\n<li>bar</li>\n<li>baz</li>\n</ul>\n",
+  "example": 303,
+  "start_line": 5283,
+  "end_line": 5293,
+  "section": "Lists"
+ },
+ {
+  "markdown": "-   foo\n\n    notcode\n\n-   foo\n\n<!-- -->\n\n    code\n",
+  "html": "<ul>\n<li>\n<p>foo</p>\n<p>notcode</p>\n</li>\n<li>\n<p>foo</p>\n</li>\n</ul>\n<!-- -->\n<pre><code>code\n</code></pre>\n",
+  "example": 309,
+  "start_line": 5456,
+  "end_line": 5479,
+  "section": "Lists"
+ },
+ {
+  "markdown": "- a\n - b\n  - c\n   - d\n  - e\n - f\n- g\n",
+  "html": "<ul>\n<li>a</li>\n<li>b</li>\n<li>c</li>\n<li>d</li>\n<li>e</li>\n<li>f</li>\n<li>g</li>\n</ul>\n",
+  "example": 310,
+  "start_line": 5487,
+  "end_line": 5505,
+  "section": "Lists"
+ },
+ {
+  "markdown": "- a\n- b\n\n- c\n",
+  "html": "<ul>\n<li>\n<p>a</p>\n</li>\n<li>\n<p>b</p>\n</li>\n<li>\n<p>c</p>\n</li>\n</ul>\n",
+  "example": 314,
+  "start_line": 5575,
+  "end_line": 5592,
+  "section": "Lists"
+ },
+ {
+  "markdown": "- a\n- b\n\n  c\n- d\n",
+  "html": "<ul>\n<li>\n<p>a</p>\n</li>\n<li>\n<p>b</p>\n<p>c</p>\n</li>\n<li>\n<p>d</p>\n</li>\n</ul>\n",
+  "example": 316,
+  "start_line": 5619,
+  "end_line": 5638,
+  "section": "Lists"
+ },
+ {
+  "markdown": "- a\n  > b\n  ```\n  c\n  ```\n- d\n",
+  "html": "<ul>\n<li>a\n<blockquote>\n<p>b</p>\n</blockquote>\n<pre><code>c\n</code></pre>\n</li>\n<li>d</li>\n</ul>\n",
+  "example": 321,
+  "start_line": 5734,
+  "end_line": 5752,
+  "section": "Lists"
+ },
+ {
+  "markdown": "- a\n  - b\n",
+  "html": "<ul>\n<li>a\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>\n",
+  "example": 323,
+  "start_line": 5766,
+  "end_line": 5777,
+  "section": "Lists"
+ },
+ {
+  "markdown": "1. ```\n   foo\n   ```\n\n   bar\n",
+  "html": "<ol>\n<li>\n<pre><code>foo\n</code></pre>\n<p>bar</p>\n</li>\n</ol>\n",
+  "example": 324,
+  "start_line": 5783,
+  "end_line": 5797,
+  "section": "Lists"
+ },
+ {
+  "markdown": "` a`\n",
+  "html": "<p><code> a</code></p>\n",
+  "example": 332,
+  "start_line": 5924,
+  "end_line": 5928,
+  "section": "Code spans"
+ },
+ {
+  "markdown": "``\nfoo \n``\n",
+  "html": "<p><code>foo </code></p>\n",
+  "example": 336,
+  "start_line": 5962,
+  "end_line": 5968,
+  "section": "Code spans"
+ },
+ {
+  "markdown": "`foo   bar \nbaz`\n",
+  "html": "<p><code>foo   bar  baz</code></p>\n",
+  "example": 337,
+  "start_line": 5973,
+  "end_line": 5978,
+  "section": "Code spans"
+ },
+ {
+  "markdown": "`foo\\`bar`\n",
+  "html": "<p><code>foo\\</code>bar`</p>\n",
+  "example": 338,
+  "start_line": 5990,
+  "end_line": 5994,
+  "section": "Code spans"
+ },
+ {
+  "markdown": "` foo `` bar `\n",
+  "html": "<p><code>foo `` bar</code></p>\n",
+  "example": 340,
+  "start_line": 6007,
+  "end_line": 6011,
+  "section": "Code spans"
+ },
+ {
+  "markdown": "`foo\n",
+  "html": "<p>`foo</p>\n",
+  "example": 348,
+  "start_line": 6082,
+  "end_line": 6086,
+  "section": "Code spans"
+ },
+ {
+  "markdown": "`foo``bar``\n",
+  "html": "<p>`foo<code>bar</code></p>\n",
+  "example": 349,
+  "start_line": 6091,
+  "end_line": 6095,
+  "section": "Code spans"
+ },
+ {
+  "markdown": "foo*bar*\n",
+  "html": "<p>foo<em>bar</em></p>\n",
+  "example": 355,
+  "start_line": 6362,
+  "end_line": 6366,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo_bar_\n",
+  "html": "<p>foo_bar_</p>\n",
+  "example": 360,
+  "start_line": 6407,
+  "end_line": 6411,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "\u043f\u0440\u0438\u0441\u0442\u0430\u043d\u044f\u043c_\u0441\u0442\u0440\u0435\u043c\u044f\u0442\u0441\u044f_\n",
+  "html": "<p>\u043f\u0440\u0438\u0441\u0442\u0430\u043d\u044f\u043c_\u0441\u0442\u0440\u0435\u043c\u044f\u0442\u0441\u044f_</p>\n",
+  "example": 362,
+  "start_line": 6421,
+  "end_line": 6425,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo-_(bar)_\n",
+  "html": "<p>foo-<em>(bar)</em></p>\n",
+  "example": 364,
+  "start_line": 6442,
+  "end_line": 6446,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "_foo*\n",
+  "html": "<p>_foo*</p>\n",
+  "example": 365,
+  "start_line": 6454,
+  "end_line": 6458,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "*foo bar\n*\n",
+  "html": "<p>*foo bar\n*</p>\n",
+  "example": 367,
+  "start_line": 6473,
+  "end_line": 6479,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "*(*foo)\n",
+  "html": "<p>*(*foo)</p>\n",
+  "example": 368,
+  "start_line": 6486,
+  "end_line": 6490,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "*foo*bar\n",
+  "html": "<p><em>foo</em>bar</p>\n",
+  "example": 370,
+  "start_line": 6505,
+  "end_line": 6509,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "_(_foo)\n",
+  "html": "<p>_(_foo)</p>\n",
+  "example": 372,
+  "start_line": 6528,
+  "end_line": 6532,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "_foo_bar\n",
+  "html": "<p>_foo_bar</p>\n",
+  "example": 374,
+  "start_line": 6546,
+  "end_line": 6550,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "_(bar)_.\n",
+  "html": "<p><em>(bar)</em>.</p>\n",
+  "example": 377,
+  "start_line": 6571,
+  "end_line": 6575,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "a**\"foo\"**\n",
+  "html": "<p>a**&quot;foo&quot;**</p>\n",
+  "example": 380,
+  "start_line": 6601,
+  "end_line": 6605,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "__foo bar__\n",
+  "html": "<p><strong>foo bar</strong></p>\n",
+  "example": 382,
+  "start_line": 6619,
+  "end_line": 6623,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "__\nfoo bar__\n",
+  "html": "<p>__\nfoo bar__</p>\n",
+  "example": 384,
+  "start_line": 6637,
+  "end_line": 6643,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "5__6__78\n",
+  "html": "<p>5__6__78</p>\n",
+  "example": 387,
+  "start_line": 6665,
+  "end_line": 6669,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "**foo bar **\n",
+  "html": "<p>**foo bar **</p>\n",
+  "example": 391,
+  "start_line": 6703,
+  "end_line": 6707,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "__(__foo)\n",
+  "html": "<p>__(__foo)</p>\n",
+  "example": 398,
+  "start_line": 6773,
+  "end_line": 6777,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo******bar*********baz\n",
+  "html": "<p>foo<strong><strong><strong>bar</strong></strong></strong>***baz</p>\n",
+  "example": 417,
+  "start_line": 6950,
+  "end_line": 6954,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "**** is not an empty strong emphasis\n",
+  "html": "<p>**** is not an empty strong emphasis</p>\n",
+  "example": 421,
+  "start_line": 6982,
+  "end_line": 6986,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "____foo__ bar__\n",
+  "html": "<p><strong><strong>foo</strong> bar</strong></p>\n",
+  "example": 426,
+  "start_line": 7028,
+  "end_line": 7032,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "**foo *bar***\n",
+  "html": "<p><strong>foo <em>bar</em></strong></p>\n",
+  "example": 431,
+  "start_line": 7063,
+  "end_line": 7067,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo ***\n",
+  "html": "<p>foo ***</p>\n",
+  "example": 436,
+  "start_line": 7107,
+  "end_line": 7111,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo *\\**\n",
+  "html": "<p>foo <em>*</em></p>\n",
+  "example": 437,
+  "start_line": 7114,
+  "end_line": 7118,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo **\\***\n",
+  "html": "<p>foo <strong>*</strong></p>\n",
+  "example": 440,
+  "start_line": 7135,
+  "end_line": 7139,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo **_**\n",
+  "html": "<p>foo <strong>_</strong></p>\n",
+  "example": 441,
+  "start_line": 7142,
+  "end_line": 7146,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "****foo*\n",
+  "html": "<p>***<em>foo</em></p>\n",
+  "example": 445,
+  "start_line": 7174,
+  "end_line": 7178,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo ___\n",
+  "html": "<p>foo ___</p>\n",
+  "example": 448,
+  "start_line": 7198,
+  "end_line": 7202,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo _*_\n",
+  "html": "<p>foo <em>*</em></p>\n",
+  "example": 450,
+  "start_line": 7212,
+  "end_line": 7216,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo _____\n",
+  "html": "<p>foo _____</p>\n",
+  "example": 451,
+  "start_line": 7219,
+  "end_line": 7223,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "foo __*__\n",
+  "html": "<p>foo <strong>*</strong></p>\n",
+  "example": 453,
+  "start_line": 7233,
+  "end_line": 7237,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "_foo__\n",
+  "html": "<p><em>foo</em>_</p>\n",
+  "example": 455,
+  "start_line": 7251,
+  "end_line": 7255,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "___foo__\n",
+  "html": "<p>_<strong>foo</strong></p>\n",
+  "example": 456,
+  "start_line": 7258,
+  "end_line": 7262,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "____foo_\n",
+  "html": "<p>___<em>foo</em></p>\n",
+  "example": 457,
+  "start_line": 7265,
+  "end_line": 7269,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "*_foo_*\n",
+  "html": "<p><em><em>foo</em></em></p>\n",
+  "example": 461,
+  "start_line": 7296,
+  "end_line": 7300,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "__foo__\n",
+  "html": "<p><strong>foo</strong></p>\n",
+  "example": 462,
+  "start_line": 7303,
+  "end_line": 7307,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "____foo____\n",
+  "html": "<p><strong><strong>foo</strong></strong></p>\n",
+  "example": 465,
+  "start_line": 7327,
+  "end_line": 7331,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "*foo *bar baz*\n",
+  "html": "<p>*foo <em>bar baz</em></p>\n",
+  "example": 472,
+  "start_line": 7386,
+  "end_line": 7390,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "**<a href=\"**\">\n",
+  "html": "<p>**<a href=\"**\"></p>\n",
+  "example": 476,
+  "start_line": 7416,
+  "end_line": 7420,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "**a<https://foo.bar/?q=**>\n",
+  "html": "<p>**a<a href=\"https://foo.bar/?q=**\">https://foo.bar/?q=**</a></p>\n",
+  "example": 480,
+  "start_line": 7444,
+  "end_line": 7448,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "__a<https://foo.bar/?q=__>\n",
+  "html": "<p>__a<a href=\"https://foo.bar/?q=__\">https://foo.bar/?q=__</a></p>\n",
+  "example": 481,
+  "start_line": 7451,
+  "end_line": 7455,
+  "section": "Emphasis and strong emphasis"
+ },
+ {
+  "markdown": "[](./target.md)\n",
+  "html": "<p><a href=\"./target.md\"></a></p>\n",
+  "example": 484,
+  "start_line": 7555,
+  "end_line": 7559,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link]()\n",
+  "html": "<p><a href=\"\">link</a></p>\n",
+  "example": 485,
+  "start_line": 7562,
+  "end_line": 7566,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link](<>)\n",
+  "html": "<p><a href=\"\">link</a></p>\n",
+  "example": 486,
+  "start_line": 7569,
+  "end_line": 7573,
+  "section": "Links"
+ },
+ {
+  "markdown": "[]()\n",
+  "html": "<p><a href=\"\"></a></p>\n",
+  "example": 487,
+  "start_line": 7576,
+  "end_line": 7580,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link](foo(and(bar)))\n",
+  "html": "<p><a href=\"foo(and(bar))\">link</a></p>\n",
+  "example": 496,
+  "start_line": 7657,
+  "end_line": 7661,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link](foo\\bar)\n",
+  "html": "<p><a href=\"foo%5Cbar\">link</a></p>\n",
+  "example": 502,
+  "start_line": 7715,
+  "end_line": 7719,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link](\"title\")\n",
+  "html": "<p><a href=\"%22title%22\">link</a></p>\n",
+  "example": 504,
+  "start_line": 7742,
+  "end_line": 7746,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link](   /uri\n  \"title\"  )\n",
+  "html": "<p><a href=\"/uri\" title=\"title\">link</a></p>\n",
+  "example": 510,
+  "start_line": 7819,
+  "end_line": 7824,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link [foo [bar]]](/uri)\n",
+  "html": "<p><a href=\"/uri\">link [foo [bar]]</a></p>\n",
+  "example": 512,
+  "start_line": 7840,
+  "end_line": 7844,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link [bar](/uri)\n",
+  "html": "<p>[link <a href=\"/uri\">bar</a></p>\n",
+  "example": 514,
+  "start_line": 7854,
+  "end_line": 7858,
+  "section": "Links"
+ },
+ {
+  "markdown": "[link *foo **bar** `#`*](/uri)\n",
+  "html": "<p><a href=\"/uri\">link <em>foo <strong>bar</strong> <code>#</code></em></a></p>\n",
+  "example": 516,
+  "start_line": 7870,
+  "end_line": 7874,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo [bar](/uri)](/uri)\n",
+  "html": "<p>[foo <a href=\"/uri\">bar</a>](/uri)</p>\n",
+  "example": 518,
+  "start_line": 7886,
+  "end_line": 7890,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo][bar]\n\n[bar]: /url \"title\"\n",
+  "html": "<p><a href=\"/url\" title=\"title\">foo</a></p>\n",
+  "example": 527,
+  "start_line": 7989,
+  "end_line": 7995,
+  "section": "Links"
+ },
+ {
+  "markdown": "[![moon](moon.jpg)][ref]\n\n[ref]: /uri\n",
+  "html": "<p><a href=\"/uri\"><img src=\"moon.jpg\" alt=\"moon\" /></a></p>\n",
+  "example": 531,
+  "start_line": 8033,
+  "end_line": 8039,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri\n",
+  "html": "<p>[foo <em>bar <a href=\"/uri\">baz</a></em>]<a href=\"/uri\">ref</a></p>\n",
+  "example": 533,
+  "start_line": 8053,
+  "end_line": 8059,
+  "section": "Links"
+ },
+ {
+  "markdown": "*[foo*][ref]\n\n[ref]: /uri\n",
+  "html": "<p>*<a href=\"/uri\">foo*</a></p>\n",
+  "example": 534,
+  "start_line": 8068,
+  "end_line": 8074,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo *bar][ref]*\n\n[ref]: /uri\n",
+  "html": "<p><a href=\"/uri\">foo *bar</a>*</p>\n",
+  "example": 535,
+  "start_line": 8077,
+  "end_line": 8083,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo`][ref]`\n\n[ref]: /uri\n",
+  "html": "<p>[foo<code>][ref]</code></p>\n",
+  "example": 537,
+  "start_line": 8098,
+  "end_line": 8104,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]\n",
+  "html": "<p><a href=\"/url1\">bar</a></p>\n",
+  "example": 544,
+  "start_line": 8204,
+  "end_line": 8212,
+  "section": "Links"
+ },
+ {
+  "markdown": "[bar][foo\\!]\n\n[foo!]: /url\n",
+  "html": "<p>[bar][foo!]</p>\n",
+  "example": 545,
+  "start_line": 8219,
+  "end_line": 8225,
+  "section": "Links"
+ },
+ {
+  "markdown": "[[[foo]]]\n\n[[[foo]]]: /url\n",
+  "html": "<p>[[[foo]]]</p>\n<p>[[[foo]]]: /url</p>\n",
+  "example": 548,
+  "start_line": 8251,
+  "end_line": 8258,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo][ref\\[]\n\n[ref\\[]: /uri\n",
+  "html": "<p><a href=\"/uri\">foo</a></p>\n",
+  "example": 549,
+  "start_line": 8261,
+  "end_line": 8267,
+  "section": "Links"
+ },
+ {
+  "markdown": "[Foo][]\n\n[foo]: /url \"title\"\n",
+  "html": "<p><a href=\"/url\" title=\"title\">Foo</a></p>\n",
+  "example": 555,
+  "start_line": 8337,
+  "end_line": 8343,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo] \n[]\n\n[foo]: /url \"title\"\n",
+  "html": "<p><a href=\"/url\" title=\"title\">foo</a>\n[]</p>\n",
+  "example": 556,
+  "start_line": 8350,
+  "end_line": 8358,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo] bar\n\n[foo]: /url\n",
+  "html": "<p><a href=\"/url\">foo</a> bar</p>\n",
+  "example": 562,
+  "start_line": 8419,
+  "end_line": 8425,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo][]\n\n[foo]: /url1\n",
+  "html": "<p><a href=\"/url1\">foo</a></p>\n",
+  "example": 566,
+  "start_line": 8464,
+  "end_line": 8470,
+  "section": "Links"
+ },
+ {
+  "markdown": "[foo]()\n\n[foo]: /url1\n",
+  "html": "<p><a href=\"\">foo</a></p>\n",
+  "example": 567,
+  "start_line": 8474,
+  "end_line": 8480,
+  "section": "Links"
+ },
+ {
+  "markdown": "![foo](/url \"title\")\n",
+  "html": "<p><img src=\"/url\" alt=\"foo\" title=\"title\" /></p>\n",
+  "example": 572,
+  "start_line": 8541,
+  "end_line": 8545,
+  "section": "Images"
+ },
+ {
+  "markdown": "![foo ![bar](/url)](/url2)\n",
+  "html": "<p><img src=\"/url2\" alt=\"foo bar\" /></p>\n",
+  "example": 574,
+  "start_line": 8557,
+  "end_line": 8561,
+  "section": "Images"
+ },
+ {
+  "markdown": "![foo *bar*][foobar]\n\n[FOOBAR]: train.jpg \"train & tracks\"\n",
+  "html": "<p><img src=\"train.jpg\" alt=\"foo bar\" title=\"train &amp; tracks\" /></p>\n",
+  "example": 577,
+  "start_line": 8587,
+  "end_line": 8593,
+  "section": "Images"
+ },
+ {
+  "markdown": "My ![foo bar](/path/to/train.jpg  \"title\"   )\n",
+  "html": "<p>My <img src=\"/path/to/train.jpg\" alt=\"foo bar\" title=\"title\" /></p>\n",
+  "example": 579,
+  "start_line": 8603,
+  "end_line": 8607,
+  "section": "Images"
+ },
+ {
+  "markdown": "![foo](<url>)\n",
+  "html": "<p><img src=\"url\" alt=\"foo\" /></p>\n",
+  "example": 580,
+  "start_line": 8610,
+  "end_line": 8614,
+  "section": "Images"
+ },
+ {
+  "markdown": "![*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n",
+  "html": "<p><img src=\"/url\" alt=\"foo bar\" title=\"title\" /></p>\n",
+  "example": 585,
+  "start_line": 8655,
+  "end_line": 8661,
+  "section": "Images"
+ },
+ {
+  "markdown": "![*foo* bar]\n\n[*foo* bar]: /url \"title\"\n",
+  "html": "<p><img src=\"/url\" alt=\"foo bar\" title=\"title\" /></p>\n",
+  "example": 589,
+  "start_line": 8700,
+  "end_line": 8706,
+  "section": "Images"
+ },
+ {
+  "markdown": "<http://foo.bar.baz>\n",
+  "html": "<p><a href=\"http://foo.bar.baz\">http://foo.bar.baz</a></p>\n",
+  "example": 594,
+  "start_line": 8780,
+  "end_line": 8784,
+  "section": "Autolinks"
+ },
+ {
+  "markdown": "<localhost:5001/foo>\n",
+  "html": "<p><a href=\"localhost:5001/foo\">localhost:5001/foo</a></p>\n",
+  "example": 601,
+  "start_line": 8836,
+  "end_line": 8840,
+  "section": "Autolinks"
+ },
+ {
+  "markdown": "<foo@bar.example.com>\n",
+  "html": "<p><a href=\"mailto:foo@bar.example.com\">foo@bar.example.com</a></p>\n",
+  "example": 604,
+  "start_line": 8876,
+  "end_line": 8880,
+  "section": "Autolinks"
+ },
+ {
+  "markdown": "<foo\\+@bar.example.com>\n",
+  "html": "<p>&lt;foo+@bar.example.com&gt;</p>\n",
+  "example": 606,
+  "start_line": 8892,
+  "end_line": 8896,
+  "section": "Autolinks"
+ },
+ {
+  "markdown": "<>\n",
+  "html": "<p>&lt;&gt;</p>\n",
+  "example": 607,
+  "start_line": 8901,
+  "end_line": 8905,
+  "section": "Autolinks"
+ },
+ {
+  "markdown": "<foo.bar.baz>\n",
+  "html": "<p>&lt;foo.bar.baz&gt;</p>\n",
+  "example": 610,
+  "start_line": 8922,
+  "end_line": 8926,
+  "section": "Autolinks"
+ },
+ {
+  "markdown": "<a  /><b2\ndata=\"foo\" >\n",
+  "html": "<p><a  /><b2\ndata=\"foo\" ></p>\n",
+  "example": 615,
+  "start_line": 9034,
+  "end_line": 9040,
+  "section": "Raw HTML"
+ },
+ {
+  "markdown": "<a foo=\"bar\" bam = 'baz <em>\"</em>'\n_boolean zoop:33=zoop:33 />\n",
+  "html": "<p><a foo=\"bar\" bam = 'baz <em>\"</em>'\n_boolean zoop:33=zoop:33 /></p>\n",
+  "example": 616,
+  "start_line": 9045,
+  "end_line": 9051,
+  "section": "Raw HTML"
+ },
+ {
+  "markdown": "<a href='bar'title=title>\n",
+  "html": "<p>&lt;a href='bar'title=title&gt;</p>\n",
+  "example": 622,
+  "start_line": 9107,
+  "end_line": 9111,
+  "section": "Raw HTML"
+ },
+ {
+  "markdown": "</a href=\"foo\">\n",
+  "html": "<p>&lt;/a href=&quot;foo&quot;&gt;</p>\n",
+  "example": 624,
+  "start_line": 9125,
+  "end_line": 9129,
+  "section": "Raw HTML"
+ },
+ {
+  "markdown": "foo <a href=\"\\*\">\n",
+  "html": "<p>foo <a href=\"\\*\"></p>\n",
+  "example": 631,
+  "start_line": 9191,
+  "end_line": 9195,
+  "section": "Raw HTML"
+ },
+ {
+  "markdown": "<a href=\"\\\"\">\n",
+  "html": "<p>&lt;a href=&quot;&quot;&quot;&gt;</p>\n",
+  "example": 632,
+  "start_line": 9198,
+  "end_line": 9202,
+  "section": "Raw HTML"
+ },
+ {
+  "markdown": "foo       \nbaz\n",
+  "html": "<p>foo<br />\nbaz</p>\n",
+  "example": 635,
+  "start_line": 9235,
+  "end_line": 9241,
+  "section": "Hard line breaks"
+ },
+ {
+  "markdown": "foo\\\n     bar\n",
+  "html": "<p>foo<br />\nbar</p>\n",
+  "example": 637,
+  "start_line": 9255,
+  "end_line": 9261,
+  "section": "Hard line breaks"
+ },
+ {
+  "markdown": "*foo  \nbar*\n",
+  "html": "<p><em>foo<br />\nbar</em></p>\n",
+  "example": 638,
+  "start_line": 9267,
+  "end_line": 9273,
+  "section": "Hard line breaks"
+ },
+ {
+  "markdown": "*foo\\\nbar*\n",
+  "html": "<p><em>foo<br />\nbar</em></p>\n",
+  "example": 639,
+  "start_line": 9276,
+  "end_line": 9282,
+  "section": "Hard line breaks"
+ },
+ {
+  "markdown": "<a href=\"foo\\\nbar\">\n",
+  "html": "<p><a href=\"foo\\\nbar\"></p>\n",
+  "example": 643,
+  "start_line": 9314,
+  "end_line": 9320,
+  "section": "Hard line breaks"
+ },
+ {
+  "markdown": "Multiple     spaces\n",
+  "html": "<p>Multiple     spaces</p>\n",
+  "example": 652,
+  "start_line": 9411,
+  "end_line": 9415,
+  "section": "Textual content"
+ }
+]

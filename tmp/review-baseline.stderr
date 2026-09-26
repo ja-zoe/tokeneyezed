@@ -1,0 +1,1 @@
+the baseline loop isn't built yet (STEP 3); run B would use agent claude, 30 attempts x 40 turns (from configs/b.toml extending base.toml)

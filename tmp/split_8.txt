@@ -1,0 +1,29 @@
+tests/contracts/test_ports.py::test_scorer[ScriptedScorer]
+tests/controller/test_claude_runner.py::test_run_commits_the_agents_edits
+tests/controller/test_graph.py::test_budget_counts_flagged_attempts
+tests/eval/test_eval_cli.py::test_score_attempt_mode_prints_locked_contract
+tests/eval/test_scorer.py::test_single_mode_and_trailing_newline_tolerance
+tests/eval/test_split.py::test_tiny_section_priority
+tests/test_brief.py::test_only_closed_attempts_can_be_failed_or_best
+tests/test_compactor.py::test_writes_one_memory_document_with_every_field
+tests/test_compactor.py::test_summary_is_clipped_and_whitespace_normalized
+tests/test_compactor.py::test_openrouter_does_not_retry_client_errors[401]
+tests/test_embeddings.py::test_rate_limiter_rejects_a_request_that_can_never_fit
+tests/test_embeddings.py::test_large_input_is_split_into_batches_of_at_most_128
+tests/test_embeddings.py::test_malformed_responses_do_not_escape_write_fallback[body6]
+tests/test_invariants.py::test_i4_pre_gate_blocks_honeypot
+tests/test_ledger.py::test_open_attempt_requires_every_field[number]
+tests/test_ledger.py::test_close_attempt_fills_the_doc_and_embeds_it
+tests/test_observer.py::test_audit_failure_rejects_service_request
+tests/test_observer.py::test_forbidden_shell[python scorer.py]
+tests/test_observer.py::test_patch_checks_every_target_and_rename
+tests/test_retrieval_eval.py::test_unknown_section_has_no_relevant_attempts
+tests/test_retrieval_eval.py::test_every_arm_is_scoped_to_the_session
+tests/test_retrieval_eval.py::test_only_transient_auto_errors_are_retried[Got non OK status from response, status code: 400-False]
+tests/test_reviewer.py::test_score_gap[current4-previous4-True]
+tests/test_reviewer.py::test_invalid_scores_fail_closed[0.5]
+tests/test_writes.py::test_insert_event_requires_every_field[agent]
+tests/test_writes.py::test_write_attempt_requires_every_field[session_id]
+tests/test_writes.py::test_write_attempt_requires_every_field[outcome]
+tests/test_writes.py::test_first_attempt_may_have_no_parent
+tests/test_writes.py::test_backfill_does_not_overwrite_an_existing_embedding

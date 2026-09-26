@@ -1,0 +1,29 @@
+tests/contracts/test_ports.py::test_goal_store[InMemoryGoalStore]
+tests/contracts/test_ports.py::test_reviewer[None-GamingReviewer]
+tests/controller/test_claude_runner.py::test_timebox_stops_a_hung_agent_and_still_returns
+tests/controller/test_graph.py::test_replan_after_failure_streak
+tests/eval/test_eval_cli.py::test_score_one_split[validation-2]
+tests/eval/test_scorer.py::test_crashing_renderer_counts_as_error
+tests/eval/test_split.py::test_split_is_deterministic
+tests/test_brief.py::test_memory_search_is_scoped_to_the_session
+tests/test_compactor.py::test_waits_until_enough_attempts_have_piled_up
+tests/test_compactor.py::test_backfill_embeds_only_the_memory_queue
+tests/test_compactor.py::test_openrouter_rejects_malformed_responses[None]
+tests/test_embeddings.py::test_budget_is_settled_to_the_real_token_count
+tests/test_embeddings.py::test_response_missing_index_is_an_error_and_write_path_returns_none
+tests/test_embeddings.py::test_malformed_embedding_still_accounts_for_reported_usage
+tests/test_invariants.py::test_i6_runner_files_outside_task_workspace
+tests/test_ledger.py::test_open_attempt_requires_every_field[agent]
+tests/test_ledger.py::test_close_attempt_never_embeds_a_flagged_attempt
+tests/test_observer.py::test_forbidden_shell[uv add mistune]
+tests/test_observer.py::test_protected_edit[tests/test_renderer.py]
+tests/test_observer.py::test_configured_protection
+tests/test_retrieval_eval.py::test_recall_at_5[ranked0-relevant0-1.0]
+tests/test_retrieval_eval.py::test_auto_copy_holds_the_exact_text_embed_embeds
+tests/test_retrieval_eval.py::test_only_transient_auto_errors_are_retried[Unable to generate the embedding-False]
+tests/test_reviewer.py::test_score_gap[current6-previous6-False]
+tests/test_reviewer.py::test_invalid_thresholds[options0]
+tests/test_writes.py::test_insert_event_requires_every_field[tool]
+tests/test_writes.py::test_write_attempt_requires_every_field[goal_id]
+tests/test_writes.py::test_write_attempt_requires_every_field[parent_attempt]
+tests/test_writes.py::test_flagged_attempt_is_written_but_never_embedded
