@@ -11,12 +11,20 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 from .core import PreGate, validate_event
+from .postcheck import INTENT_HEADER, PostChecker, decode_intent_header
 
 
-def make_server(gate: PreGate, token: str, insert_event: Callable[[dict], None], port=8765):
+def make_server(
+    gate: PreGate,
+    token: str,
+    insert_event: Callable[[dict], None],
+    port=8765,
+    post_checker: PostChecker | None = None,
+):
     """Accept a callable event writer; MongoEventWriter adapts data.insert_event."""
     if not token:
         raise ValueError("observer token must be nonempty")
+    post_checker = post_checker or PostChecker()
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
@@ -34,11 +42,17 @@ def make_server(gate: PreGate, token: str, insert_event: Callable[[dict], None],
                 self.connection.settimeout(3)
                 event = json.loads(self.rfile.read(size))
                 validate_event(event)
-                decision = gate.check(event)
+                if event["phase"] == "post":
+                    intent = decode_intent_header(self.headers.get(INTENT_HEADER, ""))
+                    decision = post_checker.check(event, intent)
+                else:
+                    decision = gate.check(event)
                 event["verdict"] = decision.action + (
                     f": {decision.reason}" if decision.reason else ""
                 )
                 insert_event(event)
+                if event["phase"] == "stop":
+                    post_checker.finish_attempt(event)
             except Exception:
                 self.send_error(503, "observer could not evaluate or persist event")
                 return

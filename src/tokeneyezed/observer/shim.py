@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .core import Decision, validate_event
+from .postcheck import INTENT_HEADER, encode_intent_header
 
 PHASES = {"PreToolUse": "pre", "PostToolUse": "post", "Stop": "stop"}
 TOOLS = {
@@ -38,6 +39,14 @@ def to_event(payload: dict, env: dict, agent: str | None = None) -> dict:
         tool_input = {"patch": command} if isinstance(command, str) else {}
     else:
         tool = (CODEX_TOOLS if agent == "codex" else TOOLS).get(native_tool, "other")
+    tool_response = next(
+        (
+            payload[key]
+            for key in ("tool_response", "tool_output", "output")
+            if payload.get(key) is not None
+        ),
+        None,
+    )
     event = {
         "session_id": env["TOKENEYEZED_SESSION_ID"],
         "attempt_id": env["TOKENEYEZED_ATTEMPT_ID"],
@@ -45,9 +54,7 @@ def to_event(payload: dict, env: dict, agent: str | None = None) -> dict:
         "phase": phase,
         "tool": tool,
         "input": tool_input,
-        "output_summary": json.dumps(payload["tool_response"])[:2000]
-        if "tool_response" in payload
-        else None,
+        "output_summary": json.dumps(tool_response)[:2000] if tool_response is not None else None,
         "verdict": None,
         "ts": datetime.now(UTC).isoformat(),
     }
@@ -55,31 +62,39 @@ def to_event(payload: dict, env: dict, agent: str | None = None) -> dict:
     return event
 
 
-def from_decision(decision: Decision, phase: str) -> tuple[int, str, str]:
+def from_decision(
+    decision: Decision, phase: str, agent: str = "claude"
+) -> tuple[int, str, str]:
     if decision.action == "block" and phase == "pre":
         return 2, "", decision.reason
     if decision.action == "note" and phase == "post":
+        response = {
+            "hookSpecificOutput": {
+                "hookEventName": "PostToolUse",
+                "additionalContext": decision.reason,
+            }
+        }
+        if agent == "codex":
+            response.update({"decision": "block", "reason": decision.reason})
         return (
             0,
-            json.dumps(
-                {
-                    "hookSpecificOutput": {
-                        "hookEventName": "PostToolUse",
-                        "additionalContext": decision.reason,
-                    }
-                }
-            ),
+            json.dumps(response),
             "",
         )
     return 0, "", ""
 
 
-def request_decision(event: dict, url: str, token: str, timeout: float = 3) -> Decision:
+def request_decision(
+    event: dict, url: str, token: str, timeout: float = 3, intent: str = ""
+) -> Decision:
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+    if event["phase"] == "post" and intent:
+        headers[INTENT_HEADER] = encode_intent_header(intent)
     request = urllib.request.Request(
         url,
         data=json.dumps(event).encode(),
         method="POST",
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        headers=headers,
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
         body = json.loads(response.read(65537))
@@ -103,8 +118,18 @@ def handle(
     event = None
     try:
         event = to_event(payload, env, agent)
-        decision = send(event, env["TOKENEYEZED_OBSERVER_URL"], env["TOKENEYEZED_OBSERVER_TOKEN"])
-        return from_decision(decision, phase)
+        if send is request_decision:
+            decision = send(
+                event,
+                env["TOKENEYEZED_OBSERVER_URL"],
+                env["TOKENEYEZED_OBSERVER_TOKEN"],
+                intent=env.get("TOKENEYEZED_INTENT", ""),
+            )
+        else:
+            decision = send(
+                event, env["TOKENEYEZED_OBSERVER_URL"], env["TOKENEYEZED_OBSERVER_TOKEN"]
+            )
+        return from_decision(decision, phase, event["agent"])
     except Exception:
         warning = "observer unavailable or invalid hook payload"
         try:
