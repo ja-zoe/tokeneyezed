@@ -14,6 +14,6 @@ Every real check must prove it can see a violation (for example, a scanner test 
 | I4 | The pre-gate blocks honeypot shortcuts before they run: installing `markdown-it-py`, `mistune`, or `commonmark`, and copying from `site-packages`. | Dharshan | unit-enforced for recognized commands; live hook admission pending |
 | I5 | The pre-gate blocks edits to the scorer, test files, and hook configs (`.claude/`, `.codex/`). | Dharshan | unit-enforced for direct edits and recognized shell paths; runner isolation and live admission pending |
 | I6 | Hook configs and the agents' config dirs (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`) live outside the task workspace. | Julian | skipped: needs runner config |
-| I7 | Runs B, H, and H-mem use the same pinned model, read from one shared config. | Julian | skipped: needs run config |
+| I7 | Runs B, H, and H-mem use the same pinned model, read from one shared config. | Julian | **enforced** (run files may override only name, agent, memory) |
 | I8 | A flagged attempt never reaches the brief, embeddings, `memory`, or metric history (it is still written to `attempts` for audit). | Aaron | skipped: needs brief builder + compactor |
 | I9 | If the observer is unreachable, the shim blocks in the pre phase (fail closed) and allows in the post phase (fail open). | Dharshan | unit-enforced; live hook admission pending |

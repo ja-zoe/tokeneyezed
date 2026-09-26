@@ -70,12 +70,12 @@ Real implementations of any port (including the real `claude -p` runner), the he
 
 All in `tests/controller/`, using fakes and `InMemorySaver`:
 
-- [ ] **Happy path:** with a fake scorer that improves each attempt, every goal completes and the run finalizes.
-- [ ] **Budget:** the run stops at `max_attempts`, and flagged attempts count toward it.
-- [ ] **Flagged attempts stay out:** a flagged attempt calls `Ledger.close_attempt` with outcome `flagged` but never reaches `Compactor` or the failure streak.
-- [ ] **Replan:** N consecutive non-improving attempts on a goal trigger exactly one `GoalStore.replan`.
-- [ ] **Kill and resume on another agent:** a runner that raises mid-run simulates SIGTERM; resuming the same thread with a *different* fake runner continues from the last completed attempt (no attempt repeated, attempt numbering continues, the new attempts record the new agent).
-- [ ] **Config:** `h.toml` and `h-mem.toml` resolve to the same model and budget (backs I7).
-- [ ] `uv run pytest -rs`, `uv run ruff check`, and `uv run ruff format --check` pass.
+- [x] **Happy path:** with a fake scorer that improves each attempt, every goal completes and the run finalizes.
+- [x] **Budget:** the run stops at `max_attempts`, and flagged attempts count toward it.
+- [x] **Flagged attempts stay out:** a flagged attempt calls `Ledger.close_attempt` with outcome `flagged` but never reaches `Compactor` or the failure streak.
+- [x] **Replan:** N consecutive non-improving attempts on a goal trigger exactly one `GoalStore.replan`.
+- [x] **Kill and resume on another agent:** a runner that raises mid-run simulates SIGTERM; resuming the same thread with a *different* fake runner continues from the last completed attempt (no attempt repeated, attempt numbering continues, the new attempts record the new agent).
+- [x] **Config:** `h.toml` and `h-mem.toml` resolve to the same model and budget (backs I7).
+- [x] `uv run pytest -rs`, `uv run ruff check`, and `uv run ruff format --check` pass.
 
 Ship: PR from this branch, squash-merged after Julian approves.
