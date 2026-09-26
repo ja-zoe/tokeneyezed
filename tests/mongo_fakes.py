@@ -29,7 +29,7 @@ class FakeCollection:
         self.docs.append(doc)
         return FakeResult(doc["_id"])
 
-    def find(self, query: dict[str, Any]) -> FakeCursor:
+    def find(self, query: dict[str, Any], projection: Any = None) -> FakeCursor:
         def matches(doc):
             for key, value in query.items():
                 if isinstance(value, dict):
@@ -44,6 +44,12 @@ class FakeCollection:
             return True
 
         return FakeCursor(d for d in self.docs if matches(d))
+
+    def find_one(self, query: dict[str, Any], projection: Any = None, sort: Any = None):
+        return next(iter(self.find(query)), None)
+
+    def aggregate(self, pipeline: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return []  # search stages need a real Atlas cluster
 
     def update_one(self, query: dict[str, Any], update: dict[str, Any]):
         for doc in self.find(query):
