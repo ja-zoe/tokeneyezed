@@ -36,6 +36,19 @@ Each workstream has its own package, so four people can work in parallel without
 - **Attempt agents run with a dedicated `CLAUDE_CONFIG_DIR` / `CODEX_HOME`**, so nobody's personal config contaminates a run. Never use `claude --bare`; it skips hooks and refuses subscription login.
 - **One pinned model string**, read from shared config, for B, H, and H-mem.
 
+These rules are catalogued in `tests/INVARIANTS.md` and checked by `tests/test_invariants.py`. Run `uv run pytest -rs` before pushing. When you build a piece an invariant depends on, replace its skip with a real check that also proves it can catch a violation.
+
+## Git conventions
+
+`main` is the integration branch. It must always pass `uv run pytest` and `uv run ruff check`.
+
+- **Straight to `main`:** small doc and plan updates (`docs/`, `README.md`, this file). Pull first, keep the commit focused, and say what changed in the message.
+- **Everything else goes on a branch.** That means code, tests, dependency changes, and contract changes. Name it `<workstream>/<short-kebab-description>`, where the workstream is `controller`, `data`, `observer`, or `eval` (for example `controller/attempt-runner`, `observer/pre-gate`). Cross-cutting work uses `shared/<description>`.
+- **Keep branches short-lived.** Merge small pieces often rather than one big branch at the end of the day. Rebase on or merge `main` before opening a PR.
+- **Merging:** open a PR and squash-merge it. Before merging, run `uv run pytest -rs` and `uv run ruff check` and make sure both pass. You may merge your own PR if it only touches your own package. If it touches another workstream's package, `docs/contracts.md`, or `tests/INVARIANTS.md`, get that owner's OK first.
+- **Never** force-push `main`, commit `.env` or other secrets, or commit run artifacts (`runs/` is gitignored).
+- Commit messages: imperative subject line ("Add pre-gate honeypot check"), with a body when the why isn't obvious.
+
 ## Conventions
 
 - Python 3.12, managed with `uv` (`uv sync`, `uv run ...`, `uv add <pkg>`). Don't add a dependency without a clear reason.
