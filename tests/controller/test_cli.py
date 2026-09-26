@@ -19,8 +19,9 @@ def test_fake_run_completes(capsys):
     assert "STARTED cli-test" in out and "cli-test ALL GOALS COMPLETE" in out
 
 
-def test_resume_refuses_without_real_ports(capsys):
+def test_resume_builds_real_ports_and_names_missing_setup(monkeypatch):
     import pytest
 
-    with pytest.raises(SystemExit, match="only `run --fake` works"):
+    monkeypatch.delenv("TOKENEYEZED_WORKSPACE", raising=False)
+    with pytest.raises(SystemExit, match="TOKENEYEZED_WORKSPACE"):
         main(["resume", "x", "--config", "configs/h.toml"])
