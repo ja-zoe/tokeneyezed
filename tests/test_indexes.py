@@ -24,7 +24,7 @@ def test_attempts_vector_declares_every_filtered_field() -> None:
 def test_memory_and_skills_vector_declare_every_filtered_field() -> None:
     for collection, pipeline in (
         ("memory", memory_pipeline("s", VECTOR)),
-        ("skills", skills_pipeline(VECTOR)),
+        ("skills", skills_pipeline("s", VECTOR)),
     ):
         stage = vector_stage(pipeline)
         assert set(stage.get("filter", {})) <= declared(collection, stage["index"])
@@ -38,7 +38,7 @@ def test_vector_indexes_match_the_pinned_embedding_dimension() -> None:
                 assert vec["numDimensions"] == DIMENSION and vec["similarity"] == "cosine"
 
 
-# Definitions exactly as Atlas returned them from list_search_indexes() on the live cluster.
+# Definitions in the shape Atlas returns from list_search_indexes() (with its defaults).
 LIVE_ATTEMPTS_TEXT = {
     "mappings": {
         "dynamic": False,
@@ -54,7 +54,8 @@ LIVE_SKILLS_VECTOR = {
             "numDimensions": DIMENSION,
             "similarity": "cosine",
             "quantization": "none",
-        }
+        },
+        {"type": "filter", "path": "session_id"},
     ]
 }
 

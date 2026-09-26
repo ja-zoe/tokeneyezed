@@ -31,6 +31,7 @@ from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
 from tokeneyezed.data.db import get_db
+from tokeneyezed.data.skills import record_skill_outcomes
 from tokeneyezed.ports import Goal
 
 OPEN, COMPLETE = "open", "complete"
@@ -47,8 +48,10 @@ def _require_str(name: str, value: Any) -> None:
 
 
 class MongoGoalStore:
-    def __init__(self, db: Database | None = None) -> None:
+    def __init__(self, db: Database | None = None, distiller: Any | None = None) -> None:
+        """distiller: a SkillDistiller (data/skills.py), run when a goal completes; optional."""
         self._db = db
+        self._distiller = distiller
 
     def seed(self, session_id: str, sections: Sequence[str], target_val_pass: float) -> None:
         _require_str("session_id", session_id)
@@ -121,6 +124,7 @@ class MongoGoalStore:
             raise LookupError(f"no goal {goal_id!r}")
 
     def complete(self, goal_id: str) -> None:
+        """Mark the goal complete, credit the skills shown for it, and distill a new skill."""
         _require_str("goal_id", goal_id)
         result = self._goals().update_one(
             {"goal_id": goal_id},
@@ -128,6 +132,14 @@ class MongoGoalStore:
         )
         if result.matched_count != 1:
             raise LookupError(f"no goal {goal_id!r}")
+        db = self._db if self._db is not None else get_db()
+        try:  # skills are a stretch goal: never let them block goal completion
+            record_skill_outcomes(db, goal_id)
+            if self._distiller is not None:
+                goal = self._goals().find_one({"goal_id": goal_id}, {"session_id": 1, "section": 1})
+                self._distiller.distill(goal["session_id"], goal_id, goal["section"])
+        except Exception:  # noqa: BLE001
+            pass
 
     def strategy_notes(self, goal_id: str) -> str:
         """The goal's current strategy, "" before any replan (or for an unknown goal)."""

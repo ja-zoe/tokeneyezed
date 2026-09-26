@@ -21,6 +21,7 @@ from tokeneyezed.data.db import get_db
 from tokeneyezed.data.embeddings import Embedder, get_embedder
 from tokeneyezed.data.goals import MongoGoalStore
 from tokeneyezed.data.ledger import MongoLedger
+from tokeneyezed.data.skills import SkillDistiller
 
 
 def data_ports(db: Database | None = None, embedder: Embedder | None = None) -> dict[str, Any]:
@@ -28,7 +29,7 @@ def data_ports(db: Database | None = None, embedder: Embedder | None = None) -> 
     db = db if db is not None else get_db()
     embedder = embedder or get_embedder()
     return {
-        "goals": MongoGoalStore(db=db),
+        "goals": MongoGoalStore(db=db, distiller=SkillDistiller(db=db, embedder=embedder)),
         "brief": MongoBriefBuilder(db=db, embedder=embedder),
         "ledger": MongoLedger(db=db, embedder=embedder),
         "compactor": MongoCompactor(db=db, embedder=embedder),
