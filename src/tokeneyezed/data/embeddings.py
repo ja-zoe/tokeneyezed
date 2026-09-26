@@ -1,10 +1,10 @@
 """The one embed() helper. Every collection embeds through here (master plan, "MongoDB data model").
 
 One pinned Voyage model and output dimension, so vectors are comparable across collections. Calls
-Voyage directly over HTTPS. Guards against limit-breaking on the client side:
+Voyage directly over HTTPS. Applies best-effort usage guards on the client side:
 
 - a sliding-window limiter keeps requests/min and tokens/min under a fraction of the Tier 1 limits,
-- a total token budget stops the run before it burns through the free allowance,
+- a process token budget refuses new requests once reported usage exhausts the budget,
 - 429 and 5xx responses are retried with exponential backoff and jitter (honoring Retry-After).
 
 The write path uses embed_document_or_none(): if Voyage fails or the budget is spent, it returns
@@ -32,7 +32,7 @@ API_URL = "https://api.voyageai.com/v1/embeddings"
 MAX_BATCH = 128  # documents per request (Voyage maximum)
 MAX_BATCH_TOKENS = 100_000  # stay under Voyage's per-request token cap
 MAX_RETRIES = 5
-CHARS_PER_TOKEN = 3  # deliberately low: over-estimates tokens, so we err on the safe side
+CHARS_PER_TOKEN = 3  # heuristic, not an upper bound; actual usage can exceed reservations
 
 # Tier 1 for voyage-4 is 8M TPM / 2000 RPM. Run at half of that by default.
 DEFAULT_MAX_RPM = 1000
@@ -94,7 +94,11 @@ class RateLimiter:
 
 
 class TokenBudget:
-    """Hard cap on total tokens spent by this process."""
+    """Admission budget tracking reservations and reported token usage.
+
+    Estimates can be too low, so in-flight requests may exceed the limit. Settlement
+    preserves the actual count and rejects an over-budget result; later calls are refused.
+    """
 
     def __init__(self, limit: int) -> None:
         self.limit = limit
@@ -110,9 +114,17 @@ class TokenBudget:
             self.spent += tokens
 
     def settle(self, reserved: int, actual: int) -> None:
-        """Replace the estimate with the real count Voyage reported."""
+        """Replace the estimate with the real count Voyage reported.
+
+        Already-billed usage cannot be undone. Preserve it even above the limit,
+        then raise BudgetExceeded so the caller drops the result and later calls stop.
+        """
         with self._lock:
             self.spent += actual - reserved
+            if self.limit and self.spent > self.limit:
+                raise BudgetExceeded(
+                    f"Voyage used {actual} tokens, over the budget of {self.limit}"
+                )
 
 
 def _http_post(payload: dict[str, Any]) -> dict[str, Any]:
@@ -220,16 +232,26 @@ class Embedder:
         self._sleep(delay)
 
     def _parse(self, body: dict[str, Any], expected: int, estimate: int) -> list[list[float]]:
-        data = sorted(body.get("data", []), key=lambda item: item["index"])
-        if len(data) != expected:
-            raise EmbeddingError(f"asked for {expected} embeddings, got {len(data)}")
-        vectors = [item["embedding"] for item in data]
-        for vector in vectors:
-            if len(vector) != DIMENSION:
-                raise EmbeddingError(f"expected {DIMENSION} dimensions, got {len(vector)}")
-        actual = body.get("usage", {}).get("total_tokens")
-        if isinstance(actual, int):
+        if not isinstance(body, dict):
+            raise EmbeddingError("malformed Voyage response: expected an object")
+        usage = body.get("usage") or {}
+        if not isinstance(usage, dict):
+            raise EmbeddingError("malformed Voyage usage: expected an object")
+        actual = usage.get("total_tokens")
+        if actual is not None and (type(actual) is not int or actual < 0):
+            raise EmbeddingError("malformed Voyage usage: expected a nonnegative token count")
+        if actual is not None:
             self._budget.settle(estimate, actual)
+        try:
+            data = sorted(body["data"], key=lambda item: item["index"])
+            vectors = [item["embedding"] for item in data]
+        except (KeyError, TypeError) as err:
+            raise EmbeddingError(f"malformed Voyage response: {err!r}") from err
+        if len(vectors) != expected:
+            raise EmbeddingError(f"asked for {expected} embeddings, got {len(vectors)}")
+        for vector in vectors:
+            if not isinstance(vector, list) or len(vector) != DIMENSION:
+                raise EmbeddingError(f"expected {DIMENSION} dimensions")
         return vectors
 
 
