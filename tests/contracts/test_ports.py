@@ -12,6 +12,7 @@ from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller import fakes
 from tokeneyezed.data.brief import MongoBriefBuilder
+from tokeneyezed.data.compactor import MongoCompactor
 from tokeneyezed.data.ledger import MongoLedger
 from tokeneyezed.observer.reviewer import GamingReviewer
 from tokeneyezed.ports import (
@@ -53,7 +54,18 @@ def mongo_ledger() -> MongoLedger:
 
 
 LEDGERS = [fakes.InMemoryLedger, mongo_ledger]
-COMPACTORS = [fakes.FakeCompactor]
+
+
+class _StubSummarizer:
+    def summarize(self, attempts) -> str:
+        return "summary"
+
+
+def mongo_compactor() -> MongoCompactor:
+    return MongoCompactor(db=FakeDB(), embedder=embedder(), summarizer=_StubSummarizer())
+
+
+COMPACTORS = [fakes.FakeCompactor, mongo_compactor]
 
 GOAL = Goal(goal_id="c:Tabs", section="Tabs", target_val_pass=0.85)
 RESULT = AttemptResult(agent="claude", commit="abc123", diff_summary="edit", exit_code=0)
