@@ -14,7 +14,7 @@ Every command we should be able to run, who owns it, and whether it exists yet. 
 | `tokeneyezed run ... --fake [--checkpointer memory]` | The whole loop on in-memory fakes, for trying things without Atlas or an agent. | ✅ |
 | `tokeneyezed resume ID --config configs/h.toml [--agent AGENT]` | Continue a session from its Atlas checkpoint: marks the killed attempt, resets the workspace, prints the `RESUMED` banner, and carries on, optionally on a different agent (the agent handoff). | ✅ code; needs real ports 📋 |
 | `tokeneyezed status ID` | Session progress from its checkpoint: attempts, current goal, best score per goal. | ✅ (needs `MONGODB_URI`) |
-| `tokeneyezed attempt --config configs/h.toml --intent "..." [--brief-file F]` | Run **one** real attempt with the real runner (fakes elsewhere). Smoke-tests the runner; runs the honeypot demo beat on cue. | 🔨 `controller/claude-runner` |
+| `tokeneyezed attempt --config configs/h.toml --intent "..." [--brief-file F]` | Run **one** real attempt with the real runner (fakes elsewhere). Smoke-tests the runner; runs the honeypot demo beat on cue. | ✅ |
 
 ## Observer (Dharshan)
 
@@ -28,10 +28,12 @@ Every command we should be able to run, who owns it, and whether it exists yet. 
 
 | Command | What it does | Status |
 |---|---|---|
-| `tokeneyezed db init` | Create collections and indexes (wraps `data/indexes.py:ensure_search_indexes`). Safe to re-run. | 📋 (helper ✅) |
-| `tokeneyezed db check` | The 10:30 embeddings check: embed one test document, insert it, get it back from a vector query. | 📋 |
-| `tokeneyezed db backfill` | Embed attempts written while Voyage was down (wraps `data/writes.py:backfill_embeddings`). | 📋 (helper ✅) |
-| `tokeneyezed eval retrieval` | Recall@5: vector vs. keyword vs. hybrid, plus the Automated Embedding comparison. | 📋 |
+| `tokeneyezed db init` | Create collections, the regular indexes (unique `goals.goal_id`, and the rest of the data model), and the Atlas Search / Vector Search indexes (wraps `data/indexes.py:ensure_search_indexes`). Safe to re-run. Search indexes build asynchronously: wait for READY in Atlas. | ✅ (needs `MONGODB_URI`) |
+| `tokeneyezed db check [--timeout S]` | The 10:30 embeddings check: embed one test document, insert it into `skills`, get it back from a `$vectorSearch` on `skills_vector`, and delete it. Exits 1 with the reason on failure. Run `db init` first; it refuses (without calling Voyage) if the index isn't READY. | ✅ (needs `MONGODB_URI`, `VOYAGE_API_KEY`) |
+| `tokeneyezed db backfill [--limit N]` | Embed attempts written while Voyage was down (wraps `data/writes.py:backfill_embeddings`). | ✅ (needs `MONGODB_URI`, `VOYAGE_API_KEY`) |
+| `tokeneyezed eval retrieval SESSION_ID [--arms vector,keyword,hybrid,auto] [--example ATTEMPT_ID] [--auto-interval S]` | Recall@5: vector vs. keyword vs. hybrid, plus the Automated Embedding comparison (wraps `data/retrieval_eval.py`; `--auto-interval 21` on M0). | ✅ (needs `MONGODB_URI`, `VOYAGE_API_KEY`) |
+
+The data commands live in `data/commands.py` and are registered from `controller/cli.py` with `register(subparsers)`, per the convention above. Setup order on a fresh cluster: `db init`, wait for the search indexes to be READY in Atlas, `db check`.
 
 ## Task and eval (Gunjan)
 
