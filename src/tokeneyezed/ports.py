@@ -29,6 +29,7 @@ class AttemptResult:
     commit: str  # commit in the task workspace after the attempt
     diff_summary: str
     exit_code: int
+    blocked: tuple[str, ...] = ()  # tool calls the observer's pre-gate blocked, with reasons
 
 
 @dataclass(frozen=True)

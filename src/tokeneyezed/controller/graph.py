@@ -2,7 +2,7 @@
 
 State is small and checkpointed (ids, counters, the current attempt). Goals, attempts, and memory
 live in Atlas behind the ports. The ports and run config arrive through the runtime context,
-which is not checkpointed: resuming a session with a different AttemptRunner is the Codex handoff.
+which is not checkpointed: resuming a session with a different AttemptRunner is the agent handoff.
 """
 
 from __future__ import annotations

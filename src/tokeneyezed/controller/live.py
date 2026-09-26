@@ -79,6 +79,13 @@ class LiveFeed:
         self.line(self._style(f"#{self.done + 1:03d}  {self.agent:<7} {self.section}", "cyan"))
         self.line(f"      intent  {update['intent']}")
 
+    def on_run_attempt(self, update: dict[str, Any]) -> None:
+        self.blocked(update["result"].get("blocked", ()))
+
+    def blocked(self, calls: Any) -> None:
+        for call in calls:
+            self.line("      " + self._style("BLOCKED", "red") + f"  {call}")
+
     def on_score_attempt(self, update: dict[str, Any]) -> None:
         score = update["score"]
         self.line(f"      score   visible {score['visible_pass']:.2f}  val {score['val_pass']:.2f}")
