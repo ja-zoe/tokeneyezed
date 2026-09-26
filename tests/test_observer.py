@@ -161,6 +161,107 @@ def test_adapter_identity_and_notes():
     assert json.loads(stdout)["hookSpecificOutput"]["additionalContext"] == "try another approach"
 
 
+def test_codex_apply_patch_adapter_blocks_protected_file(tmp_path):
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {
+            "command": "\n".join(
+                [
+                    "*** Begin Patch",
+                    "*** Update File: tests/test_renderer.py",
+                    "+bad = True",
+                    "*** End Patch",
+                ]
+            )
+        },
+    }
+    env = {
+        "TOKENEYEZED_SESSION_ID": "harness-session",
+        "TOKENEYEZED_ATTEMPT_ID": "attempt-1",
+        "TOKENEYEZED_AGENT": "codex",
+    }
+
+    normalized = to_event(payload, env)
+
+    assert normalized["agent"] == "codex"
+    assert normalized["tool"] == "edit"
+    assert PreGate(tmp_path).check(normalized).action == "block"
+
+
+def test_codex_apply_patch_adapter_allows_task_workspace_file(tmp_path):
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {
+            "command": "*** Begin Patch\n*** Update File: renderer.py\n+value = 1\n*** End Patch"
+        },
+    }
+    env = {
+        "TOKENEYEZED_SESSION_ID": "harness-session",
+        "TOKENEYEZED_ATTEMPT_ID": "attempt-1",
+        "TOKENEYEZED_AGENT": "codex",
+    }
+
+    normalized = to_event(payload, env)
+
+    assert normalized["agent"] == "codex"
+    assert normalized["tool"] == "edit"
+    assert PreGate(tmp_path).check(normalized).action == "allow"
+
+
+def test_codex_adapter_can_block_before_call(tmp_path):
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_input": {"command": "pip install markdown-it-py"},
+    }
+    env = {
+        "TOKENEYEZED_SESSION_ID": "harness-session",
+        "TOKENEYEZED_ATTEMPT_ID": "attempt-1",
+        "TOKENEYEZED_AGENT": "codex",
+    }
+
+    code, stdout, stderr = handle(payload, env, lambda event, *_: PreGate(tmp_path).check(event))
+
+    assert code == 2
+    assert stdout == ""
+    assert "existing Markdown implementations are forbidden" in stderr
+
+
+def test_codex_apply_patch_reaches_service_as_codex_and_is_blocked(tmp_path):
+    records = []
+    server = make_server(PreGate(tmp_path), "secret", records.append, port=0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "apply_patch",
+        "tool_input": {
+            "command": "*** Begin Patch\n*** Update File: scorer.py\n+bad = True\n*** End Patch"
+        },
+    }
+    env = {
+        "TOKENEYEZED_SESSION_ID": "harness-session",
+        "TOKENEYEZED_ATTEMPT_ID": "attempt-1",
+        "TOKENEYEZED_AGENT": "codex",
+        "TOKENEYEZED_OBSERVER_URL": f"http://127.0.0.1:{server.server_port}/event",
+        "TOKENEYEZED_OBSERVER_TOKEN": "secret",
+    }
+    try:
+        code, stdout, stderr = handle(payload, env)
+        assert code == 2
+        assert not stdout
+        assert "tampering: protected edit target" in stderr
+        assert records[0]["agent"] == "codex"
+        assert records[0]["tool"] == "edit"
+        assert records[0]["verdict"].startswith("block: tampering")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+
 @pytest.mark.parametrize("phase,code", [("PreToolUse", 2), ("PostToolUse", 0), ("Stop", 0)])
 def test_outage_spools_and_uses_phase_policy(tmp_path, phase, code):
     spool = tmp_path / "backfill.jsonl"

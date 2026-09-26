@@ -1,6 +1,6 @@
 # Observer: first integration slice
 
-Implemented: contract-shaped events, Claude payload adapter, deterministic pre-gate,
+Implemented: contract-shaped events, Claude/Codex payload adapters, deterministic pre-gate,
 authenticated loopback HTTP endpoint, event-writer injection, and outage backfill.
 No new dependencies. Post/stop events are logged and allowed for now.
 
@@ -20,6 +20,10 @@ hook environment. The runner also supplies:
 - `TOKENEYEZED_OBSERVER_SPOOL`: absolute writable JSONL path outside the task workspace.
 
 The Claude hook command is `<absolute-harness-python> -m tokeneyezed.observer.shim`.
+The Codex hook command adds `--agent codex` (and should match both `PreToolUse`
+and `PostToolUse` tools `Bash|apply_patch`); the runner must supply the same
+`TOKENEYEZED_SESSION_ID`, `TOKENEYEZED_ATTEMPT_ID`, observer URL, token, and spool
+environment variables for both adapters. `TOKENEYEZED_AGENT=codex` is also accepted.
 Install the harness into that Python environment so imports work from the task directory.
 Wire it to PreToolUse and PostToolUse with all-tool matching, and optionally Stop,
 in the external hook settings owned by the runner. The adapter consumes JSON stdin.
@@ -58,10 +62,20 @@ OS level. The shared token prevents accidental unauthenticated requests; it is
 not an isolation boundary against a process inheriting the hook environment.
 
 Unit tests and an HTTP integration test cover both blocked and allowed behavior.
-Real headless Claude hook admission has not been verified. Codex is deliberately
-not advertised as supported until its installed hook payloads and edit blocking
-pass the repository's admission test. The core accepts normalized patch targets
-for a future adapter.
+The Codex adapter normalizes `Bash` and `apply_patch`; patch text is passed through
+the same protected-path and forbidden-import checks as Claude edits. Codex is not
+advertised as supported until its installed hook payloads and edit blocking pass
+the repository's admission test.
+
+## Offline replay
+
+`tokeneyezed replay --session B-... --events runs/B/events.jsonl --workspace /absolute/task-repo`
+reads newline-delimited neutral events with the fields in `docs/contracts.md`. It
+filters to the selected session and re-evaluates only `pre` events against the
+deterministic gate. It does not change stored verdicts, write to MongoDB, or run
+the recorded tool calls. Pass each protected harness path with `--protect`.
+Baseline capture must produce this same neutral JSONL shape; the baseline runner
+does not install the blocking observer.
 
 Still to build: post-checks, source-based gaming review, learned-rule replay/loading,
 real-agent smoke tests. The shared contracts remain draft;
