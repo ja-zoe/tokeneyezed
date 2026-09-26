@@ -32,7 +32,9 @@ Use separate spool files per hook process if your runner launches hooks concurre
 `data.writes.insert_event` helper and converts the event timestamp to a UTC datetime.
 Use `--mongo` instead of `--audit-log` for Atlas storage. Export `MONGODB_URI` and
 optionally `TOKENEYEZED_DB` in the service environment; the service does not load
-an agent workspace's `.env`. Mongo writes have a two-second deadline, shorter than
+an agent workspace's `.env`. The pre-gate also blocks source edits and writes that
+import the forbidden Markdown implementations, even if they are already installed.
+Mongo writes have a two-second deadline, shorter than
 the shim timeout. Storage failures return HTTP 503 and trigger the shim's existing
 phase-specific outage policy and spool. Do not give the database URI to the agent.
 
