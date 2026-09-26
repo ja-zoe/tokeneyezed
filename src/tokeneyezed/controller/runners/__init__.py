@@ -29,8 +29,12 @@ def runner_for(agent: str, config: RunConfig) -> HeadlessRunner:
         runs_dir=Path(os.environ.get("TOKENEYEZED_RUNS_DIR") or "~/.tokeneyezed/runs"),
         config_dir=Path(os.environ.get(config_var) or config_default),
     )
+    # Codex can run on OpenRouter instead of a ChatGPT login (a machine choice, like the paths);
+    # its model is still pinned in configs/base.toml, as [models].codex_openrouter (I7).
+    codex_provider = os.environ.get("TOKENEYEZED_CODEX_PROVIDER") or None
+    model_key = f"codex_{codex_provider}" if agent == "codex" and codex_provider else agent
     common = dict(
-        model=agent_model(config, agent),
+        model=agent_model(config, model_key),
         timebox_seconds=config.timebox_minutes * 60,
         observer_url=os.environ.get("TOKENEYEZED_OBSERVER_URL") or "http://127.0.0.1:8765/event",
         observer_token=os.environ.get("TOKENEYEZED_OBSERVER_TOKEN", ""),
@@ -40,7 +44,9 @@ def runner_for(agent: str, config: RunConfig) -> HeadlessRunner:
             paths, max_turns=config.max_turns, allowed_tools=config.allowed_tools, **common
         )
     audit = os.environ.get("TOKENEYEZED_OBSERVER_AUDIT_LOG")
-    return CodexRunner(paths, audit_log=Path(audit) if audit else None, **common)
+    return CodexRunner(
+        paths, audit_log=Path(audit) if audit else None, provider=codex_provider, **common
+    )
 
 
 def claude_runner_from_env(config: RunConfig) -> ClaudeRunner:
