@@ -269,13 +269,20 @@ def resume(
 ) -> State:
     """Continue a session from its latest checkpoint, possibly with a different runner.
 
-    Any attempt still marked running was killed: record it so, and reset the workspace to the last
-    clean attempt's commit so its half-finished edits are gone. on_resumed receives the killed
-    attempt ids, the restored state, and the next node(s) before the loop continues.
+    If the agent was interrupted inside run_attempt, mark that attempt killed and reset the
+    workspace to the last clean commit. If a later node failed, preserve the completed attempt
+    and its workspace so the failed node can retry. on_resumed receives the killed attempt ids,
+    restored state, and pending nodes before the loop continues.
     """
-    killed = ctx.ports.ledger.mark_running_as_killed(session_id)
-    ctx.ports.runner.reset_workspace(ctx.ports.ledger.last_clean_commit(session_id))
+    snapshot = graph.get_state(_run_config(session_id, ctx.config))
+    pending = {task.name for task in snapshot.tasks}
+    # An interrupted run_attempt has no durable result and must restart from the last clean
+    # commit. If a later node failed, its result is already checkpointed: keep the attempt and
+    # workspace intact so that scoring or recording can be retried against the same code.
+    killed = []
+    if "run_attempt" in pending:
+        killed = ctx.ports.ledger.mark_running_as_killed(session_id)
+        ctx.ports.runner.reset_workspace(ctx.ports.ledger.last_clean_commit(session_id))
     if on_resumed:
-        snapshot = graph.get_state(_run_config(session_id, ctx.config))
         on_resumed(killed, snapshot.values, tuple(snapshot.next))
     return _drive(graph, None, ctx, session_id, on_update)

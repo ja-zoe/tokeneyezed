@@ -290,6 +290,20 @@ def mark_running_as_killed(session_id: str, *, db: Database | None = None) -> li
     return killed
 
 
+def restore_killed_attempt(attempt_id: str, *, db: Database | None = None) -> bool:
+    """Undo an incorrect kill when a checkpoint proves the agent already returned a result.
+
+    This is an operator recovery path, not part of normal resume. Only a killed attempt can be
+    restored; a closed or running attempt is left untouched.
+    """
+    _require_str("attempt_id", attempt_id)
+    result = _attempts(db).update_one(
+        {"attempt_id": attempt_id, "status": KILLED, "outcome": KILLED_OUTCOME},
+        {"$set": {"status": RUNNING}, "$unset": {"outcome": "", "closed_at": ""}},
+    )
+    return result.modified_count == 1
+
+
 def last_clean_commit(session_id: str, *, db: Database | None = None) -> str | None:
     """Commit of the session's most recent closed, non-flagged attempt (None if there is none).
 
