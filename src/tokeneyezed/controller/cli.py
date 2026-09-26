@@ -211,9 +211,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     attempt.set_defaults(func=cmd_attempt)
 
     from tokeneyezed.data import commands as data_commands
+    from tokeneyezed.eval import commands as eval_commands
 
     data_commands.register(sub)  # db init|check|backfill, eval retrieval (docs/commands.md)
     register_eval(sub)  # eval-lane subcommands: split, score, baseline, report (docs/commands.md)
+    eval_commands.register(sub)  # workspace init, heldout (docs/commands.md)
 
     replay = sub.add_parser("replay", help="replay recorded events through the observer pre-gate")
     replay.add_argument("--session", required=True, help="session ID to evaluate")

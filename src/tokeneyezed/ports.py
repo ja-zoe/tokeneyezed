@@ -37,7 +37,9 @@ class AttemptResult:
 class Score:
     visible_pass: float
     val_pass: float
-    per_section: Mapping[str, Mapping[str, float]]  # section -> {"visible": x, "val": y}
+    # section -> {"visible": x, "val": y}; "visible" is absent for sections too small to have
+    # visible examples (validation always has at least one)
+    per_section: Mapping[str, Mapping[str, float]]
 
     def section_val(self, section: str) -> float:
         return self.per_section.get(section, {}).get("val", self.val_pass)

@@ -5,7 +5,7 @@
                  Safe to re-run: existing indexes are left alone, drifted ones are updated.
 - `db check`     the embeddings check: embed a test document, insert it, get it back from a
                  vector query, and remove it again. Needs `db init` to have run first.
-- `db backfill`  embed attempts that were written while Voyage was down.
+- `db backfill`  embed attempts, memory summaries, and skills written while Voyage was down.
 - `eval retrieval SESSION`  recall@5 across the four retrieval arms (data/retrieval_eval.py).
 
 Every command reads MONGODB_URI (and VOYAGE_API_KEY where it embeds) from the environment, which
@@ -24,9 +24,11 @@ from pymongo import ASCENDING, DESCENDING
 from pymongo.database import Database
 from pymongo.errors import OperationFailure
 
+from tokeneyezed.data.compactor import backfill_memory_embeddings
 from tokeneyezed.data.db import get_db
 from tokeneyezed.data.embeddings import get_embedder
 from tokeneyezed.data.indexes import INDEXES, ensure_search_indexes
+from tokeneyezed.data.skills import backfill_skill_embeddings
 from tokeneyezed.data.writes import backfill_embeddings
 
 # Collections that need no search index but must exist (docs/master-plan.md, "MongoDB data model").
@@ -49,6 +51,10 @@ REGULAR_INDEXES: dict[str, list[tuple[list[tuple[str, int]], dict[str, Any]]]] =
     ],
 }
 
+# IndexOptionsConflict, IndexKeySpecsConflict: an existing index has the same keys, other options.
+INDEX_CONFLICT_CODES = (85, 86)
+CONFLICT = "CONFLICT   "
+
 CHECK_COLLECTION = "skills"  # has a vector index and no filter fields, so a bare test doc fits
 CHECK_INDEX = "skills_vector"
 CHECK_TAG = "_dbcheck"
@@ -65,7 +71,18 @@ def init_database(db: Database) -> list[str]:
             lines.append(f"collection  {name}  created")
     for collection, specs in REGULAR_INDEXES.items():
         for keys, options in specs:
-            index_name = db[collection].create_index(keys, **options)  # no-op if it exists
+            try:
+                index_name = db[collection].create_index(keys, **options)  # no-op if it exists
+            except OperationFailure as err:
+                if err.code not in INDEX_CONFLICT_CODES:
+                    raise
+                # An index on the same keys exists with other options (e.g. not unique). MongoDB
+                # won't change it in place: report it and carry on with the rest.
+                lines.append(
+                    f"{CONFLICT}  {collection} {dict(keys)} {options}: an existing index differs; "
+                    "drop it and re-run to apply"
+                )
+                continue
             lines.append(f"index       {collection}.{index_name}")
     for name, action in ensure_search_indexes(db).items():
         lines.append(f"search      {name}  {action}")
@@ -135,10 +152,15 @@ def check_embeddings(
 
 
 def cmd_db_init(args: argparse.Namespace) -> int:
-    for line in init_database(get_db()):
+    lines = init_database(get_db())
+    for line in lines:
         print(line)
     print(f"done: {sum(len(v) for v in INDEXES.values())} search indexes build in Atlas; wait for")
     print("READY there before querying them.")
+    conflicts = [line for line in lines if line.startswith(CONFLICT)]
+    if conflicts:
+        print(f"{len(conflicts)} index conflict(s) above were not applied.", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -154,6 +176,10 @@ def cmd_db_check(args: argparse.Namespace) -> int:
 def cmd_db_backfill(args: argparse.Namespace) -> int:
     fixed = backfill_embeddings(limit=args.limit)
     print(f"embedded {fixed} attempts that were written without a vector")
+    memories = backfill_memory_embeddings(limit=args.limit)
+    print(f"embedded {memories} memory summaries that were written without a vector")
+    skills = backfill_skill_embeddings(limit=args.limit)
+    print(f"embedded {skills} skills that were written without a vector")
     return 0
 
 
@@ -177,7 +203,7 @@ def register(subparsers: Any) -> None:
     check.add_argument("--timeout", type=float, default=120, help="seconds to wait for the query")
     check.set_defaults(func=cmd_db_check)
 
-    backfill = db.add_parser("backfill", help="embed attempts written while Voyage was down")
+    backfill = db.add_parser("backfill", help="embed documents written while Voyage was down")
     backfill.add_argument("--limit", type=int, default=100)
     backfill.set_defaults(func=cmd_db_backfill)
 
