@@ -40,13 +40,19 @@ The real `GoalStore` (Aaron), and wiring real ports into `tokeneyezed run`.
 ## Tests (the merge gate)
 
 With a fake transport (no network):
-- [ ] The client retries 429/5xx/network errors with backoff, raises on 4xx and after retries; the compactor's existing tests still pass unchanged.
-- [ ] `plan` returns the model's intent; malformed JSON, an empty or over-long intent, or a Markdown-library name each fall back and are counted; the request uses the pinned model and JSON mode; the prompt includes the brief and the goal's strategy.
-- [ ] `replan` returns the model's strategy, with the same validation and fallback.
-- [ ] Graph: a failure streak calls `planner.replan`; the strategy is stored on the goal; the next attempt's `plan` sees it in `goal.strategy_notes`; the feed prints it.
-- [ ] Contract tests: `Planner` (fake and real, on a fake transport) covers `replan`; `GoalStore` covers "replan note comes back as `strategy_notes`".
-- [ ] `uv run pytest -rs`, `uv run ruff check`, `uv run ruff format --check` pass.
+- [x] The client retries 429/5xx/network errors with backoff, raises on 4xx and after retries; the compactor's existing tests still pass unchanged.
+- [x] `plan` returns the model's intent; malformed JSON, an empty or over-long intent, or a Markdown-library name each fall back and are counted; the request uses the pinned model and JSON mode; the prompt includes the brief and the goal's strategy.
+- [x] `replan` returns the model's strategy, with the same validation and fallback.
+- [x] Graph: a failure streak calls `planner.replan`; the strategy is stored on the goal; the next attempt's `plan` sees it in `goal.strategy_notes`; the feed prints it.
+- [x] Contract tests: `Planner` (fake and real, on a fake transport) covers `replan`; `GoalStore` covers "replan note comes back as `strategy_notes`".
+- [x] `uv run pytest -rs`, `uv run ruff check`, `uv run ruff format --check` pass.
 
-**Live check (one real call each, before merging):** `plan` and `replan` against `anthropic/claude-sonnet-5` with a realistic brief (a best attempt and two failed attempts); passes if both return valid JSON that passes validation, the intent differs from the failed attempts' intents, and nothing falls back.
+**Live check (done 2026-09-26, passed; see the PR):** `plan` and `replan` against `anthropic/claude-sonnet-5` with a realistic brief (a best attempt and two failed attempts); passes if both return valid JSON that passes validation, the intent differs from the failed attempts' intents, and nothing falls back.
 
 Ship: PR from this branch, squash-merged after Julian approves.
+
+## Amendments from the live check (2026-09-26)
+
+- **One corrective retry before falling back.** One live `replan` reply failed validation and could not be reproduced in five repeats; replies ran close to the length caps (strategies 374 to 474 characters against 500), so an occasional one goes over. On invalid output the planner now asks once more, saying what was wrong, and only then falls back; every fallback records the end of the raw reply. The prompts ask for about 200 (intent) and 300 (strategy) characters, keeping the hard caps; after that, strategies came in at 303 to 345.
+- **Tolerant parsing:** the first JSON object in the reply is used, so a fence or a trailing sentence no longer forces a fallback.
+- `[models].planner = "anthropic/claude-sonnet-5"`.

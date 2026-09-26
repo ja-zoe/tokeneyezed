@@ -115,7 +115,8 @@ class LiveFeed:
             self.line(f"      no improvement  (best {new_best:.2f}, {streak} in a row)")
 
     def on_replan(self, update: dict[str, Any]) -> None:
-        self.line("      " + self._style(f"REPLAN  {self.section}: strategy updated", "yellow"))
+        self.line("      " + self._style(f"REPLAN  {self.section}", "yellow"))
+        self.line(f"      strategy  {update.get('strategy', '')}")
 
     def on_complete_goal(self, update: dict[str, Any]) -> None:
         best = self.best.get(self.goal_id, 0.0)
