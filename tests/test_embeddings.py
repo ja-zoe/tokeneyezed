@@ -1,5 +1,7 @@
 """Limit guards for the embed() helper. No network: Voyage is replaced by a fake transport."""
 
+import http.client
+import json
 import urllib.error
 from typing import Any
 
@@ -218,3 +220,35 @@ def test_malformed_embedding_still_accounts_for_reported_usage() -> None:
     embedder = make(lambda p: body)
     assert embedder.embed_document_or_none("x") is None
     assert embedder._budget.spent == 7
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ConnectionResetError("peer dropped the connection"),
+        http.client.IncompleteRead(b"partial"),
+        json.JSONDecodeError("Expecting value", "<html>", 0),
+    ],
+)
+def test_unwrapped_network_errors_are_retried(error: Exception) -> None:
+    responses: list = [error, ok_body(1)]
+    sleeps: list[float] = []
+
+    def transport(payload: dict[str, Any]) -> dict[str, Any]:
+        item = responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    assert len(make(transport, sleeps=sleeps).embed(["x"], "document")) == 1
+    assert len(sleeps) == 1
+
+
+def test_an_unexpected_error_refunds_the_reserved_tokens() -> None:
+    def transport(payload: dict[str, Any]) -> dict[str, Any]:
+        raise RuntimeError("bug in a transport")
+
+    embedder = make(transport, budget=1000)
+    with pytest.raises(RuntimeError):
+        embedder.embed(["some text to embed"], "document")
+    assert embedder._budget.spent == 0

@@ -53,6 +53,7 @@ def test_feed_shows_every_demo_beat_across_kill_and_resume():
         r"improved  best 0\.42 -> 0\.58",
         r"#003  claude  Emphasis[\s\S]*FLAGGED",
         r"REPLAN  Emphasis",
+        r"strategy  Try a different approach for Emphasis",
         r"GOAL COMPLETE  Emphasis \(0\.88\)",
         r"#009  claude  Links",
         r"RESUMED s",

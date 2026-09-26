@@ -71,16 +71,17 @@ def test_flagged_attempts_stay_out_of_memory_and_streaks():
     assert clean[1]["parent_attempt"] == clean[0]["attempt_id"]  # the flagged one is skipped
 
 
-def test_replan_after_failure_streak():
+def test_replan_after_failure_streak_reaches_the_next_plan():
     config = replace(BASE, max_attempts=5, failure_threshold=3)
     ports = fake_ports(scorer=ScriptedScorer(val_script=(0.4,)))  # 1 improvement, then flat
     run(ports, config)
 
     # Attempt 1 improves (streak 0); attempts 2-4 are flat -> replan after attempt 4 resets the
     # streak; attempt 5 is flat again (streak 1): exactly one replan.
-    assert len(ports.goals.replans) == 1
-    goal_id, note = ports.goals.replans[0]
-    assert goal_id == "s1:Tabs" and "3 attempts without improvement" in note
+    strategy = "Try a different approach for Tabs"
+    assert ports.goals.replans == [("s1:Tabs", strategy)]  # the planner's strategy, stored
+    # Attempts 1-4 were planned before the replan, attempt 5 after it, with the new strategy.
+    assert [g.strategy_notes for g in ports.planner.seen] == [""] * 4 + [strategy]
 
 
 def test_kill_then_resume_on_another_agent_continues_without_repeating():

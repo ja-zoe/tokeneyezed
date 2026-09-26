@@ -35,7 +35,7 @@ This merges Aaron's SOW (goal loop, replan, heartbeat, schema, phases) with our 
 | Task | Open | Speed-up | **CommonMark renderer with a three-way test split** | Long enough, fast to score, gaming is measurable, a natural honeypot |
 | Baseline | None | Vanilla agent | **Naive retry loop** ("Ralph loop") with the same model, prompt, and number of attempts | Otherwise a judge says "you just ran it longer" |
 | Dashboard | Vercel v0, 5 panels, entry point for goals | Live score view | **Supporting view only** (score curves, goals, flags, context size). Runs start from the CLI | Rules ban projects where a dashboard is the main feature |
-| Embeddings | Not specified | Atlas Automated Embedding, Voyage as fallback | **Provisional: Voyage API called directly**; vectors stored in our own documents, searched with Atlas Vector Search. Confirmed or reversed by the 10:30 check | Direct calls give us the raw vectors (the rule learner clusters them), searchable the moment a document is written, and control over dimensions, caching, and reranking. Automated Embedding is less code and more MongoDB-native. The two use the same Voyage models, so neither is more accurate by default |
+| Embeddings | Not specified | Atlas Automated Embedding, Voyage as fallback | **Voyage API called directly (confirmed by the 10:30 check)**; vectors stored in our own documents, searched with Atlas Vector Search | Direct calls give us the raw vectors (the rule learner clusters them), searchable the moment a document is written, and control over dimensions, caching, and reranking. Automated Embedding is less code and more MongoDB-native. The two use the same Voyage models, so neither is more accurate by default |
 
 ---
 
@@ -132,7 +132,7 @@ flowchart TD
 | `rules` (S1) | learned rule | `pattern`, `check_type`, `evidence_event_ids`, `replay` (`hits_on_flagged`, `hits_on_good`), `status` (candidate/active/retired), `version` | change stream → observer |
 | `test_evals` | held-out test score | `session_id`, `attempt_id`, `test_pass` | **only the dashboard and the final report read this; the harness never does** |
 
-**Embeddings: Voyage API, called directly (PROVISIONAL until the 10:30 check).** 200M free tokens per participant.
+**Embeddings: Voyage API, called directly (confirmed by the 10:30 check: `voyage-4`, 1024 dimensions).** 200M free tokens per participant.
 - **One helper, one model.** All embedding goes through a single `embed()` helper in `data/`. One pinned Voyage model and output dimension for every collection, so vectors are comparable. Use `input_type="document"` when writing and `input_type="query"` when searching. The helper is also the switch point if we move to Automated Embedding.
 - **Embed at write time.** The vector is in the document when it lands, so the next attempt's brief can find it immediately. If the Voyage call fails, write the document without `embedding` and backfill later; never block the loop on it.
 - **Cache query vectors.** Embed each attempt's intent once and reuse it for every repeat-failure post-check in that attempt.
@@ -278,5 +278,5 @@ For each agent, run a headless session with a hook that (1) appends every event 
 - [x] Observer pre-gate + post-check split: **agreed.**
 - [x] Three-way test split: **agreed.**
 - [x] Project name: **Tokeneyezed.**
-- [ ] Embeddings: **provisionally Voyage API called directly.** Confirm or reverse with the 10:30 check in "MongoDB data model".
+- [x] Embeddings: **Voyage API called directly**, confirmed by the 10:30 check (embed, insert, and retrieve with `$vectorSearch` all passed). Automated Embedding also worked in the Sandbox; the retrieval eval compares the two paths.
 - [ ] Headless hooks: run the 10:30 smoke test above for `claude -p` and `codex exec`.

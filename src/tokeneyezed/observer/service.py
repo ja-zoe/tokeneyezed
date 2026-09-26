@@ -14,7 +14,7 @@ from .core import PreGate, validate_event
 
 
 def make_server(gate: PreGate, token: str, insert_event: Callable[[dict], None], port=8765):
-    """Inject Aaron's insert_event helper when available; no Mongo access here."""
+    """Accept a callable event writer; MongoEventWriter adapts data.insert_event."""
     if not token:
         raise ValueError("observer token must be nonempty")
 
@@ -58,24 +58,34 @@ def make_server(gate: PreGate, token: str, insert_event: Callable[[dict], None],
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", required=True, type=Path)
-    parser.add_argument("--audit-log", required=True, type=Path)
+    storage = parser.add_mutually_exclusive_group(required=True)
+    storage.add_argument("--audit-log", type=Path)
+    storage.add_argument("--mongo", action="store_true")
     parser.add_argument("--protect", action="append", default=[], type=Path)
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     workspace = args.workspace.resolve()
     if not workspace.is_dir():
         parser.error("workspace must be an existing directory")
-    if args.audit_log.resolve().is_relative_to(workspace):
+    if args.audit_log and args.audit_log.resolve().is_relative_to(workspace):
         parser.error("audit log must live outside the task workspace")
 
     def write_event(event):
         with args.audit_log.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(event) + "\n")
 
+    writer = write_event
+    if args.mongo:
+        from .storage import MongoEventWriter
+
+        if not os.environ.get("MONGODB_URI"):
+            parser.error("--mongo requires MONGODB_URI in the service environment")
+        writer = MongoEventWriter()
+
     server = make_server(
         PreGate(workspace, tuple(args.protect)),
         os.environ.get("TOKENEYEZED_OBSERVER_TOKEN", ""),
-        write_event,
+        writer,
         args.port,
     )
     try:

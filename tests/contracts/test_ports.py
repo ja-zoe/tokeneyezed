@@ -7,17 +7,22 @@ without credentials (and CI still runs the fakes).
 
 import os
 import tempfile
+import uuid
 from pathlib import Path
 
 import pytest
 from fake_claude import make_runner
+from fake_codex import make_codex_runner
 from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller import fakes
+from tokeneyezed.controller.planner import OpenRouterPlanner
 from tokeneyezed.data.brief import MongoBriefBuilder
 from tokeneyezed.data.compactor import MongoCompactor
+from tokeneyezed.data.goals import MongoGoalStore
 from tokeneyezed.data.ledger import MongoLedger
 from tokeneyezed.observer.reviewer import GamingReviewer
+from tokeneyezed.openrouter import OpenRouterClient
 from tokeneyezed.ports import (
     AttemptResult,
     AttemptRunner,
@@ -38,22 +43,79 @@ def needs_env(var: str):
     return pytest.mark.skipif(not os.environ.get(var), reason=f"{var} not set")
 
 
-GOAL_STORES = [fakes.InMemoryGoalStore]
+# Real data ports against Atlas: each gets a throwaway database, dropped when the session ends.
+# They run only when MONGODB_URI is set (CI has no Atlas credentials, so it runs the fakes).
+_ATLAS_DB_PREFIX = "tokeneyezed_contract_"
+_atlas_dbs: list = []
+
+
+def atlas_db():
+    from pymongo import MongoClient
+
+    db = MongoClient(os.environ["MONGODB_URI"])[f"{_ATLAS_DB_PREFIX}{uuid.uuid4().hex[:10]}"]
+    _atlas_dbs.append(db)
+    return db
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _drop_atlas_dbs():
+    yield
+    for db in _atlas_dbs:
+        assert db.name.startswith(_ATLAS_DB_PREFIX)  # never drop anything else
+        # Drop collection by collection: the project's Atlas user may not hold dropDatabase, and a
+        # database with no collections left disappears on its own.
+        for name in db.list_collection_names():
+            db.drop_collection(name)
+    _atlas_dbs.clear()
+
+
+def on_atlas(factory):
+    return pytest.param(factory, marks=needs_env("MONGODB_URI"), id=f"atlas-{factory.__name__}")
+
+
+def mongo_goal_store() -> MongoGoalStore:
+    return MongoGoalStore(db=FakeDB())
+
+
+def atlas_goal_store() -> MongoGoalStore:
+    return MongoGoalStore(db=atlas_db())
+
+
+GOAL_STORES = [fakes.InMemoryGoalStore, mongo_goal_store, on_atlas(atlas_goal_store)]
 
 
 def mongo_brief_builder() -> MongoBriefBuilder:
     return MongoBriefBuilder(db=FakeDB(), embedder=embedder())
 
 
-BRIEF_BUILDERS = [fakes.FakeBriefBuilder, mongo_brief_builder]
-PLANNERS = [fakes.FakePlanner]
+def atlas_brief_builder() -> MongoBriefBuilder:
+    return MongoBriefBuilder(db=atlas_db(), embedder=embedder())
+
+
+BRIEF_BUILDERS = [fakes.FakeBriefBuilder, mongo_brief_builder, on_atlas(atlas_brief_builder)]
+
+
+def openrouter_planner_on_fake_transport():
+    reply = '{"intent": "Handle tabs per spec 2.2.", "strategy": "Expand tabs first."}'
+    client = OpenRouterClient(
+        transport=lambda payload, key: {"choices": [{"message": {"content": reply}}]},
+        api_key="contract-test",
+    )
+    return OpenRouterPlanner(model="m", client=client)
+
+
+PLANNERS = [fakes.FakePlanner, openrouter_planner_on_fake_transport]
 
 
 def claude_runner_on_fake_binary():
     return make_runner(Path(tempfile.mkdtemp()))
 
 
-RUNNERS = [fakes.FakeRunner, claude_runner_on_fake_binary]
+def codex_runner_on_fake_binary():
+    return make_codex_runner(Path(tempfile.mkdtemp()))
+
+
+RUNNERS = [fakes.FakeRunner, claude_runner_on_fake_binary, codex_runner_on_fake_binary]
 SCORERS = [fakes.ScriptedScorer]
 REVIEWERS = [fakes.FakeReviewer, GamingReviewer]
 
@@ -62,7 +124,11 @@ def mongo_ledger() -> MongoLedger:
     return MongoLedger(db=FakeDB(), embedder=embedder())
 
 
-LEDGERS = [fakes.InMemoryLedger, mongo_ledger]
+def atlas_ledger() -> MongoLedger:
+    return MongoLedger(db=atlas_db(), embedder=embedder())
+
+
+LEDGERS = [fakes.InMemoryLedger, mongo_ledger, on_atlas(atlas_ledger)]
 
 
 class _StubSummarizer:
@@ -74,7 +140,11 @@ def mongo_compactor() -> MongoCompactor:
     return MongoCompactor(db=FakeDB(), embedder=embedder(), summarizer=_StubSummarizer())
 
 
-COMPACTORS = [fakes.FakeCompactor, mongo_compactor]
+def atlas_compactor() -> MongoCompactor:
+    return MongoCompactor(db=atlas_db(), embedder=embedder(), summarizer=_StubSummarizer())
+
+
+COMPACTORS = [fakes.FakeCompactor, mongo_compactor, on_atlas(atlas_compactor)]
 
 GOAL = Goal(goal_id="c:Tabs", section="Tabs", target_val_pass=0.85)
 RESULT = AttemptResult(agent="claude", commit="abc123", diff_summary="edit", exit_code=0)
@@ -102,6 +172,18 @@ def test_goal_store(make):
     assert store.next_open("other-session") is None  # sessions are isolated
 
 
+@pytest.mark.parametrize("make", GOAL_STORES)
+def test_goal_store_replan_note_is_the_current_strategy(make):
+    store = make()
+    store.seed("r", ["Tabs"], 0.85)
+    goal = store.next_open("r")
+    assert goal.strategy_notes == ""
+    store.replan(goal.goal_id, "expand tabs before block parsing")
+    again = store.next_open("r")
+    assert again.goal_id == goal.goal_id  # the only goal, so this always checks
+    assert again.strategy_notes == "expand tabs before block parsing"
+
+
 @pytest.mark.parametrize("make", BRIEF_BUILDERS)
 @pytest.mark.parametrize("use_memory", [True, False])
 def test_brief_builder(make, use_memory):
@@ -117,6 +199,8 @@ def test_planner(make):
     assert isinstance(planner, Planner)
     intent = planner.plan(GOAL, "brief")
     assert isinstance(intent, str) and intent
+    strategy = planner.replan(GOAL, "brief")
+    assert isinstance(strategy, str) and strategy
 
 
 @pytest.mark.parametrize("make", RUNNERS)

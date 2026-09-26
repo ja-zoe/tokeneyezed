@@ -48,7 +48,25 @@ INDEXES: dict[str, dict[str, tuple[str, dict[str, Any]]]] = {
     },
     "memory": {"memory_vector": ("vectorSearch", _vector(["session_id"]))},
     "skills": {"skills_vector": ("vectorSearch", _vector([]))},
+    # The observer's repeat-failure check and rule learner search observer flags by `check`.
+    "interventions": {"interventions_vector": ("vectorSearch", _vector(["check"]))},
 }
+
+# Defaults Atlas fills into the definition it stores. Without them every comparison with a live
+# index reports drift, and ensure_search_indexes() would rebuild the index on each call.
+_SEARCH_DEFAULTS = {"analyzer": "lucene.standard"}
+_VECTOR_FIELD_DEFAULTS = {"quantization": "none"}
+
+
+def normalized(kind: str, definition: dict[str, Any]) -> dict[str, Any]:
+    """The definition with Atlas's defaults filled in, so live and code versions compare equal."""
+    if kind == "search":
+        return {**_SEARCH_DEFAULTS, **definition}
+    fields = [
+        {**_VECTOR_FIELD_DEFAULTS, **f} if f.get("type") == "vector" else dict(f)
+        for f in definition.get("fields", [])
+    ]
+    return {**definition, "fields": fields}
 
 
 def filter_paths(definition: dict[str, Any]) -> set[str]:
@@ -73,7 +91,9 @@ def ensure_search_indexes(db: Database) -> dict[str, str]:
                     SearchIndexModel(definition=definition, name=name, type=kind)
                 )
                 actions[name] = "created"
-            elif live[name].get("latestDefinition") != definition:
+            elif normalized(kind, live[name].get("latestDefinition", {})) != normalized(
+                kind, definition
+            ):
                 db[collection].update_search_index(name, definition)
                 actions[name] = "updated"
             else:

@@ -134,8 +134,88 @@ def test_i7_same_pinned_model_across_runs() -> None:
     assert len(shared) == 1, f"B, H, and H-mem differ in shared settings: {shared}"
 
 
+def i8_leaks(db, brief) -> list[str]:
+    """Every way a flagged attempt could have reached embeddings, memory, or the brief."""
+    flagged = {a["attempt_id"] for a in db["attempts"].find({"outcome": "flagged"})}
+    leaks = []
+    for a in db["attempts"].find({"outcome": "flagged"}):
+        if "embedding" in a or a.get("needs_embedding"):
+            leaks.append(f"{a['attempt_id']} is embedded or queued for embedding")
+    for m in db["memory"].find({}):
+        for aid in flagged & set(m.get("source_event_range", [])):
+            leaks.append(f"{aid} was compacted into memory")
+    for aid in flagged:
+        if aid in brief:
+            leaks.append(f"{aid} appears in the brief")
+    return leaks
+
+
+def _i8_session(db) -> str:
+    """Run the real data-layer paths over a session with one gamed attempt; return the brief."""
+    from mongo_fakes import embedder
+
+    from tokeneyezed.data.brief import MongoBriefBuilder
+    from tokeneyezed.data.compactor import MongoCompactor
+    from tokeneyezed.data.ledger import MongoLedger
+    from tokeneyezed.data.writes import backfill_embeddings
+    from tokeneyezed.ports import AttemptResult, Goal, Score
+
+    class Summarizer:
+        def summarize(self, attempts) -> str:
+            return "; ".join(f"[{a['attempt_id']}] {a['outcome']}" for a in attempts)
+
+    goal = Goal(goal_id="s:Emphasis", section="Emphasis", target_val_pass=0.85)
+    ledger = MongoLedger(db=db, embedder=embedder())
+    for number, outcome, val in [(1, "no_change", 0.3), (2, "flagged", 0.99), (3, "improved", 0.4)]:
+        attempt_id = f"s-{number:03d}"
+        ledger.open_attempt(
+            session_id="s",
+            attempt_id=attempt_id,
+            number=number,
+            goal_id=goal.goal_id,
+            agent="claude",
+            intent=f"intent {number}",
+            parent_attempt=None,
+        )
+        ledger.close_attempt(
+            attempt_id=attempt_id,
+            result=AttemptResult(
+                agent="claude", commit=f"c{number}", diff_summary="d", exit_code=0
+            ),
+            score=Score(val, val, {"Emphasis": {"visible": val, "val": val}}),
+            outcome=outcome,
+            observer_flags=["gaming"] if outcome == "flagged" else [],
+        )
+    backfill_embeddings(db=db, embedder=embedder())
+    MongoCompactor(db=db, embedder=embedder(), summarizer=Summarizer(), min_attempts=1).compact(
+        "s", goal.goal_id
+    )
+    return MongoBriefBuilder(db=db, embedder=embedder()).build("s", goal, use_memory=True)
+
+
+def test_i8_checker_detects_a_planted_leak() -> None:
+    # Proves the I8 checker sees each kind of violation, so its empty result below means something.
+    from mongo_fakes import FakeDB
+
+    db = FakeDB()
+    brief = _i8_session(db)
+    db["attempts"].update_one({"attempt_id": "s-002"}, {"$set": {"embedding": [0.1]}})
+    db["memory"].insert_one({"session_id": "s", "source_event_range": ["s-002"]})
+    leaks = i8_leaks(db, brief + "\n- [s-002] flagged")
+    assert len(leaks) == 3, leaks
+
+
 def test_i8_flagged_attempts_stay_out_of_memory() -> None:
-    pytest.skip("I8 not built yet (owner: Aaron): needs brief builder + compactor")
+    # Data side of I8: embeddings, backfill, compacted memory, and the brief. The metric side
+    # (best scores, streaks, parent chain) is tests/controller/test_graph.py::
+    # test_flagged_attempts_stay_out_of_memory_and_streaks.
+    from mongo_fakes import FakeDB
+
+    db = FakeDB()
+    brief = _i8_session(db)
+    assert db["attempts"].find_one({"attempt_id": "s-002"})["outcome"] == "flagged"  # still audited
+    assert db["memory"].find({}), "the compactor should have written memory for the clean attempts"
+    assert i8_leaks(db, brief) == []
 
 
 def test_i9_shim_fails_closed_pre_and_open_post(tmp_path) -> None:

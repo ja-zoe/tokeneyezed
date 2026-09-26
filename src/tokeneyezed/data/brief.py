@@ -51,6 +51,7 @@ ATTEMPT_FIELDS = {
 @dataclass
 class Brief:
     goal_text: str
+    strategy_notes: str = ""  # the goal's current strategy; shown, never used as a search query
     best_attempt: dict[str, Any] | None = None
     failed_attempts: list[dict[str, Any]] = field(default_factory=list)
     memories: list[dict[str, Any]] = field(default_factory=list)
@@ -59,7 +60,20 @@ class Brief:
 
     def render(self) -> str:
         sections = [
-            ("Goal", [_clip(self.goal_text, MAX_GOAL_CHARS)]),
+            (
+                "Goal",
+                [_clip(self.goal_text, MAX_GOAL_CHARS)]
+                + (
+                    [
+                        _clip(
+                            f"Current strategy (latest replan): {self.strategy_notes}",
+                            MAX_GOAL_CHARS,
+                        )
+                    ]
+                    if self.strategy_notes
+                    else []
+                ),
+            ),
             (
                 "Best attempt so far",
                 [_attempt_line(self.best_attempt)] if self.best_attempt else [],
@@ -95,11 +109,17 @@ def build_brief(
     goal_id: str,
     section: str,
     goal_text: str,
+    strategy_notes: str = "",
     use_memory: bool = True,
     db: Database | None = None,
     embedder: Embedder | None = None,
 ) -> Brief:
-    """Assemble the brief for one goal. goal_text is the spec section plus any strategy notes.
+    """Assemble the brief for one goal.
+
+    `goal_text` is what every search (vector, keyword, memory, skills) queries with: normally the
+    spec section. `strategy_notes` is the goal's current strategy from the latest replan: shown to
+    the planner under the goal, but kept out of the queries, so retrieval keeps matching the
+    section rather than the wording of a replan note.
 
     `section` is the goal's spec section: "best" means the highest validation pass rate on that
     section (the same score the controller uses to decide an attempt improved), not overall.
@@ -120,7 +140,7 @@ def build_brief(
     except (EmbeddingError, ValueError, OSError):
         query_vector = None
 
-    brief = Brief(goal_text=goal_text)
+    brief = Brief(goal_text=goal_text, strategy_notes=strategy_notes or "")
     brief.best_attempt = db["attempts"].find_one(
         best_filter(session_id, goal_id),
         ATTEMPT_FIELDS,
@@ -276,6 +296,7 @@ class MongoBriefBuilder:
             goal_id=goal.goal_id,
             section=goal.section,
             goal_text=goal.section,
+            strategy_notes=goal.strategy_notes,
             use_memory=use_memory,
             db=self._db,
             embedder=self._embedder,

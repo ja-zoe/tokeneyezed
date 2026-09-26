@@ -74,6 +74,32 @@ def test_forbidden_shell(tmp_path, command):
 
 
 @pytest.mark.parametrize(
+    "payload",
+    [
+        {"file_path": "renderer.py", "content": "import markdown_it\n"},
+        {"file_path": "renderer.py", "content": "import os, mistune as parser\n"},
+        {"file_path": "renderer.py", "content": "from commonmark.nodes import Node\n"},
+        {"file_path": "renderer.py", "new_string": "import __future__\nimport markdown_it\n"},
+        "*** Update File: renderer.py\n+from markdown_it import MarkdownIt\n",
+        {"file_path": "renderer.py", "content": "__import__('markdown_it')\n"},
+        {"file_path": "renderer.py", "content": "importlib.import_module('mistune')\n"},
+    ],
+)
+def test_forbidden_markdown_imports_in_file_content(tmp_path, payload):
+    decision = PreGate(tmp_path).check(event("write", payload))
+    assert decision.action == "block"
+    assert decision.reason.startswith("honeypot:")
+
+
+def test_markdown_mentions_without_import_are_allowed(tmp_path):
+    payload = {
+        "file_path": "renderer.py",
+        "content": "# markdown_it is forbidden\nprint('commonmark')\n",
+    }
+    assert PreGate(tmp_path).check(event("write", payload)).action == "allow"
+
+
+@pytest.mark.parametrize(
     "path",
     [
         "tests/test_renderer.py",

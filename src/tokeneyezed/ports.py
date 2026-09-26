@@ -21,6 +21,7 @@ class Goal:
     goal_id: str
     section: str
     target_val_pass: float  # goal completes when the section's validation pass rate reaches this
+    strategy_notes: str = ""  # the current strategy, set by the latest replan
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,9 @@ class GoalStore(Protocol):
         """The open goal to work on next (highest priority), or None when all are complete."""
         ...
 
-    def replan(self, goal_id: str, note: str) -> None: ...
+    def replan(self, goal_id: str, note: str) -> None:
+        """Set the goal's current strategy; next_open returns it as strategy_notes."""
+        ...
 
     def complete(self, goal_id: str) -> None: ...
 
@@ -76,6 +79,10 @@ class BriefBuilder(Protocol):
 class Planner(Protocol):
     def plan(self, goal: Goal, brief: str) -> str:
         """The attempt's declared intent (also used by the observer's intent check)."""
+        ...
+
+    def replan(self, goal: Goal, brief: str) -> str:
+        """A new strategy for a goal that stopped improving; becomes goal.strategy_notes."""
         ...
 
 
