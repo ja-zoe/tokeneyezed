@@ -39,9 +39,9 @@ The data commands live in `data/commands.py` and are registered from `controller
 
 | Command | What it does | Status |
 |---|---|---|
-| `tokeneyezed split` | Build the visible / validation / held-out split from the CommonMark `spec.json`, stratified by section; writes the visible split into the task workspace and the other two outside it. | ⚠️ 📋 nothing on GitHub yet |
-| `tokeneyezed score [--split visible\|validation]` | Score the task workspace; prints the scorer JSON. Backs the `Scorer` port. | ⚠️ 📋 |
-| `tokeneyezed baseline --config configs/b.toml` | The naive retry loop (run B): same model, prompt, timebox; no observer, memory, or goals. | ⚠️ 📋 was due 11:30 |
+| `tokeneyezed split` | Build the visible / validation / held-out split from the CommonMark `spec.json`, stratified by section; writes the visible split into the task workspace (`TOKENEYEZED_WORKSPACE`) and the other two outside it (`TOKENEYEZED_SPLITS_DIR`). | ✅ |
+| `tokeneyezed score [--split visible\|validation]` | Score the task workspace; prints the scorer JSON. Backs the `Scorer` port. | ✅ |
+| `tokeneyezed baseline --config configs/b.toml` | The naive retry loop (run B): same model, prompt, timebox; no observer, memory, or goals. | 🔨 CLI wired; loop 📋 was due 11:30 |
 | `tokeneyezed report [--sessions B-.. H-.. H-mem-..]` | Final numbers and the score chart: held-out pass rate vs. attempt number at equal attempt counts. The only reader of `test_evals`. | 📋 |
 
 ## Development (everyone)

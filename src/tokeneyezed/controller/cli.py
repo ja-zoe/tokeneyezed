@@ -31,6 +31,7 @@ from tokeneyezed.controller.config import RunConfig, load_config
 from tokeneyezed.controller.fakes import fake_ports
 from tokeneyezed.controller.graph import Context, build_graph, resume, start
 from tokeneyezed.controller.live import LiveFeed
+from tokeneyezed.eval.cli import register as register_eval
 from tokeneyezed.ports import AttemptKilled, Ports
 
 CHECKPOINT_DB = "tokeneyezed"
@@ -189,6 +190,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     from tokeneyezed.data import commands as data_commands
 
     data_commands.register(sub)  # db init|check|backfill, eval retrieval (docs/commands.md)
+    register_eval(sub)  # eval-lane subcommands: split, score, baseline, report (docs/commands.md)
 
     args = parser.parse_args(argv)
     load_dotenv()
