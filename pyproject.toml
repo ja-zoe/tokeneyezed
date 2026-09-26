@@ -11,6 +11,9 @@ dependencies = [
     "python-dotenv>=1.2.3",
 ]
 
+[project.scripts]
+tokeneyezed = "tokeneyezed.controller.cli:main"
+
 [dependency-groups]
 dev = ["pytest", "ruff"]
 

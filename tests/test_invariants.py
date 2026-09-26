@@ -7,11 +7,13 @@ from pathlib import Path
 
 import pytest
 
+from tokeneyezed.controller.config import load_config
 from tokeneyezed.observer.core import PreGate
 from tokeneyezed.observer.shim import handle, to_event
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "tokeneyezed"
 TEST_EVALS_OWNER = SRC / "eval"
+CONFIGS = Path(__file__).resolve().parents[1] / "configs"
 
 
 def files_mentioning(root: Path, needle: str, allowed: Path) -> list[Path]:
@@ -95,8 +97,23 @@ def test_i6_hook_configs_outside_task_workspace() -> None:
     pytest.skip("I6 not built yet (owner: Julian): needs runner config")
 
 
+RUN_CONFIGS = ("b.toml", "h.toml", "h-mem.toml")
+
+
+def test_i7_run_files_cannot_override_shared_settings(tmp_path: Path) -> None:
+    # Proves the loader rejects a run file that changes a shared setting, so I7 can't drift.
+    (tmp_path / "base.toml").write_text((CONFIGS / "base.toml").read_text())
+    (tmp_path / "rogue.toml").write_text(
+        'extends = "base.toml"\nname = "X"\nagent = "claude"\nmemory = true\nmodel = "other"\n'
+    )
+    with pytest.raises(ValueError, match="model"):
+        load_config(tmp_path / "rogue.toml")
+
+
 def test_i7_same_pinned_model_across_runs() -> None:
-    pytest.skip("I7 not built yet (owner: Julian): needs run config")
+    configs = [load_config(CONFIGS / name) for name in RUN_CONFIGS]
+    shared = {(c.model, c.max_attempts, c.max_turns, c.failure_threshold) for c in configs}
+    assert len(shared) == 1, f"B, H, and H-mem differ in shared settings: {shared}"
 
 
 def test_i8_flagged_attempts_stay_out_of_memory() -> None:

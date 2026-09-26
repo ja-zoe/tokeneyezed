@@ -1,0 +1,18 @@
+# Settings that must be identical across runs B, H, and H-mem (invariant I7).
+# Run files (b.toml, h.toml, h-mem.toml) may override only: name, agent, memory.
+
+model = ""              # pinned model id; set at the 10:45 lock
+max_attempts = 30       # attempt budget per run, flagged attempts included
+max_turns = 40          # per-attempt agent turn limit (claude -p --max-turns)
+failure_threshold = 3   # consecutive non-improving attempts on a goal before a replan
+target_val_pass = 0.85  # a goal completes when its section's validation pass rate reaches this
+
+# One goal per CommonMark spec section (section names from spec.json; confirm against the split).
+sections = [
+  "Tabs", "Backslash escapes", "Entity and numeric character references", "Precedence",
+  "Thematic breaks", "ATX headings", "Setext headings", "Indented code blocks",
+  "Fenced code blocks", "HTML blocks", "Link reference definitions", "Paragraphs",
+  "Blank lines", "Block quotes", "List items", "Lists", "Inlines", "Code spans",
+  "Emphasis and strong emphasis", "Links", "Images", "Autolinks", "Raw HTML",
+  "Hard line breaks", "Soft line breaks", "Textual content",
+]

@@ -1,0 +1,4 @@
+extends = "base.toml"
+name = "B"
+agent = "claude"
+memory = false

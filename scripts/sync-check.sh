@@ -20,7 +20,7 @@ echo "sync-check: this branch is $behind commit(s) behind origin/main."
 echo "Rebase onto origin/main at the next task boundary (clean tree), then re-run the tests."
 git log --oneline HEAD..origin/main | head -20
 
-shared=(docs/contracts.md tests/INVARIANTS.md tests/contracts src/tokeneyezed/controller/ports.py)
+shared=(docs/contracts.md tests/INVARIANTS.md tests/contracts src/tokeneyezed/ports.py)
 changed=$(git diff --name-only HEAD...origin/main -- "${shared[@]}")
 if [ -n "$changed" ]; then
   echo
