@@ -48,6 +48,29 @@ not advertised as supported until its installed hook payloads and edit blocking
 pass the repository's admission test. The core accepts normalized patch targets
 for a future adapter.
 
-Still to build: post-checks, score-based gaming review, learned-rule replay/loading,
+Still to build: post-checks, source-based gaming review, learned-rule replay/loading,
 Mongo writer wiring, and real-agent smoke tests. The shared contracts remain draft;
 this module does not change them.
+
+## Reviewer port
+
+`GamingReviewer` in `observer/reviewer.py` implements the shared
+`tokeneyezed.ports.Reviewer` interface from the controller branch:
+`review(result, score, previous) -> Review`. Pass an instance as `Ports.reviewer`
+in the controller runtime context. No node changes or database access are needed.
+The reviewer is stateless; `previous` must be the same goal's last clean score.
+
+Defaults flag a visible gain of at least 0.05 when validation gains at most 0.005,
+both overall and in sections present in both scores. These configurable fractions
+are heuristic thresholds, not proof of cheating. With no previous score, a valid,
+successful attempt is admitted without a divergence judgment. Failed attempts and
+invalid rates (including NaN or missing section fields) are flagged for audit.
+
+The port supplies a diff summary rather than source code, so this reviewer does
+not claim to detect hardcoded examples. The controller is responsible for keeping
+flagged attempts out of compaction and the clean parent chain. An integration test
+checks those paths with the real reviewer and the controller's in-memory fakes.
+
+This change depends on `controller/graph-skeleton` (shared ports and controller).
+The shared contract test adds GamingReviewer alongside FakeReviewer without
+altering the interface or its assertions; coordinate that registration with Julian.

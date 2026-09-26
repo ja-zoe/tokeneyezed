@@ -13,6 +13,7 @@ from mongo_fakes import FakeDB, embedder
 from tokeneyezed.controller import fakes
 from tokeneyezed.data.brief import MongoBriefBuilder
 from tokeneyezed.data.ledger import MongoLedger
+from tokeneyezed.observer.reviewer import GamingReviewer
 from tokeneyezed.ports import (
     AttemptResult,
     AttemptRunner,
@@ -44,7 +45,7 @@ BRIEF_BUILDERS = [fakes.FakeBriefBuilder, mongo_brief_builder]
 PLANNERS = [fakes.FakePlanner]
 RUNNERS = [fakes.FakeRunner]
 SCORERS = [fakes.ScriptedScorer]
-REVIEWERS = [fakes.FakeReviewer]
+REVIEWERS = [fakes.FakeReviewer, GamingReviewer]
 
 
 def mongo_ledger() -> MongoLedger:
