@@ -56,18 +56,31 @@ def test_attempt_mode_contract(tmp_path: Path, capsys) -> None:
     ws = make_workspace(tmp_path, TABS + PRECEDENCE)
     vis = write_split(tmp_path, "visible.json", TABS)
     val = write_split(tmp_path, "validation.json", [TABS[0]] + PRECEDENCE)
-    out = run_cli(capsys, ["attempt", "--visible", vis, "--validation", val,
-                           "--workspace", str(ws)])
-    assert list(out) == ["scorer_version", "spec_version", "visible_pass", "val_pass",
-                         "per_section", "counts", "duration_s"]
+    out = run_cli(
+        capsys, ["attempt", "--visible", vis, "--validation", val, "--workspace", str(ws)]
+    )
+    assert list(out) == [
+        "scorer_version",
+        "spec_version",
+        "visible_pass",
+        "val_pass",
+        "per_section",
+        "counts",
+        "duration_s",
+    ]
     assert out["scorer_version"] == SCORER_VERSION
     assert out["spec_version"] == SPEC_VERSION
     assert out["visible_pass"] == 1.0 and out["val_pass"] == 1.0
     # Precedence has no visible examples -> visible is null (tiny-section rule).
     assert out["per_section"]["Precedence"] == {"visible": None, "val": 1.0}
     assert out["per_section"]["Tabs"] == {"visible": 1.0, "val": 1.0}
-    assert out["counts"]["visible"] == {"total": 2, "passed": 2, "failed": 0,
-                                        "errors": 0, "timeouts": 0}
+    assert out["counts"]["visible"] == {
+        "total": 2,
+        "passed": 2,
+        "failed": 0,
+        "errors": 0,
+        "timeouts": 0,
+    }
     assert out["counts"]["validation"]["total"] == 2
 
 
@@ -114,8 +127,18 @@ def test_unlaunchable_program_counts_as_error(tmp_path: Path, capsys) -> None:
     """A renderer command that cannot start (OSError) is an error, not a crash."""
     ws = make_workspace(tmp_path, TABS)
     split = write_split(tmp_path, "s.json", TABS[:1])
-    out = run_cli(capsys, ["single", "--file", split, "--workspace", str(ws),
-                           "--program", str(tmp_path / "no-such-renderer")])
+    out = run_cli(
+        capsys,
+        [
+            "single",
+            "--file",
+            split,
+            "--workspace",
+            str(ws),
+            "--program",
+            str(tmp_path / "no-such-renderer"),
+        ],
+    )
     assert out["counts"] == {"total": 1, "passed": 0, "failed": 0, "errors": 1, "timeouts": 0}
 
 
@@ -123,8 +146,7 @@ def test_slow_renderer_times_out(tmp_path: Path, capsys) -> None:
     """A renderer exceeding --timeout is a timeout, never a pass."""
     ws = make_workspace(tmp_path, TABS, renderer="import time\ntime.sleep(5)\n")
     split = write_split(tmp_path, "s.json", TABS[:1])
-    out = run_cli(capsys, ["single", "--file", split, "--workspace", str(ws),
-                           "--timeout", "0.3"])
+    out = run_cli(capsys, ["single", "--file", split, "--workspace", str(ws), "--timeout", "0.3"])
     assert out["counts"] == {"total": 1, "passed": 0, "failed": 0, "errors": 0, "timeouts": 1}
     assert out["pass_rate"] == 0.0
 
