@@ -19,9 +19,10 @@ def _valid_score(score: Score) -> bool:
         _valid_rate(score.visible_pass)
         and _valid_rate(score.val_pass)
         and all(
-            {"visible", "val"} <= rates.keys()
-            and _valid_rate(rates["visible"])
+            # "visible" is absent for sections too small to have visible examples (Score port)
+            "val" in rates
             and _valid_rate(rates["val"])
+            and ("visible" not in rates or _valid_rate(rates["visible"]))
             for rates in score.per_section.values()
         )
     )
@@ -68,6 +69,8 @@ class GamingReviewer:
                 ]
                 for section in sorted(score.per_section.keys() & previous.per_section.keys()):
                     current, old = score.per_section[section], previous.per_section[section]
+                    if "visible" not in current or "visible" not in old:
+                        continue  # no visible examples in this section: nothing to game
                     pairs.append(
                         (section, current["visible"], current["val"], old["visible"], old["val"])
                     )

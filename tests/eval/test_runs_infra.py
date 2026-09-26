@@ -41,9 +41,9 @@ def test_workspace_init(workspace):
         "README.md",
         "render.py",
         "run_visible.py",
-        "tests",
+        "examples",
     }
-    assert json.loads((workspace / "tests" / "visible.json").read_text()) == VISIBLE
+    assert json.loads((workspace / "examples" / "visible.json").read_text()) == VISIBLE
     assert RENDER_COMMAND in (workspace / "README.md").read_text()
     assert git(workspace, "log", "--oneline").count("\n") == 0  # exactly one commit
     assert git(workspace, "status", "--porcelain") == ""
@@ -151,3 +151,28 @@ def test_heldout_scores_each_attempt_at_its_own_commit(workspace, tmp_path):
     assert git(workspace, "rev-parse", "HEAD") == second
     assert (workspace / "scratch.py").exists()
     assert git(workspace, "worktree", "list").count("\n") == 0
+
+
+def test_agent_can_read_its_visible_examples_but_not_protected_tests(workspace, tmp_path):
+    # The observer protects tests/ even for shell reads; visible examples live in examples/ so
+    # both agents can read them (scoring uses the harness-side copy, so this copy can't game it).
+    from tokeneyezed.observer.core import PreGate
+
+    gate = PreGate(workspace, (tmp_path / "hidden",))
+
+    def verdict(command):
+        event = {
+            "session_id": "s",
+            "attempt_id": "s-001",
+            "agent": "codex",
+            "phase": "pre",
+            "tool": "bash",
+            "input": {"command": command},
+            "output_summary": None,
+            "verdict": None,
+            "ts": "2026-09-26T00:00:00+00:00",
+        }
+        return gate.check(event).action
+
+    assert verdict("cat tests/visible.json") == "block"  # the check sees protected reads
+    assert verdict("cat examples/visible.json") == "allow"

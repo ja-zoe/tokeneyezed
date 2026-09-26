@@ -257,6 +257,25 @@ def test_reviewer(make, previous):
         assert review.reasons  # a flag always says why (it goes to interventions)
 
 
+@pytest.mark.parametrize("make", REVIEWERS)
+def test_reviewer_accepts_sections_without_visible_examples(make):
+    # Tiny spec sections have no visible examples, so real scores omit "visible" there (Score's
+    # per_section contract). A reviewer must not reject such a score as invalid.
+    tiny = Score(
+        visible_pass=0.2,
+        val_pass=0.2,
+        per_section={"Tabs": {"visible": 0.2, "val": 0.2}, "Precedence": {"val": 0.0}},
+    )
+    later = Score(
+        visible_pass=0.3,
+        val_pass=0.3,
+        per_section={"Tabs": {"visible": 0.3, "val": 0.3}, "Precedence": {"val": 1.0}},
+    )
+    for previous, score in ((None, tiny), (tiny, later)):
+        review = make().review(RESULT, score, previous)
+        assert not review.flagged, review.reasons
+
+
 @pytest.mark.parametrize("make", LEDGERS)
 def test_ledger(make):
     ledger = make()

@@ -104,15 +104,16 @@ class LiveFeed:
         old_best = self.best.get(self.goal_id)
         self.best[self.goal_id] = new_best
         self.streaks[self.goal_id] = update["streaks"][self.goal_id]
+        # The goal's own section score, named, so it isn't read as the overall val above it.
+        section = f"{self.section} val"
         if old_best is None:
-            self.line("      " + self._style(f"first score  {new_best:.2f}", "green"))
+            self.line("      " + self._style(f"first score  {section} {new_best:.2f}", "green"))
         elif new_best > old_best:
-            self.line(
-                "      " + self._style(f"improved  best {old_best:.2f} -> {new_best:.2f}", "green")
-            )
+            change = f"improved  {section} {old_best:.2f} -> {new_best:.2f}"
+            self.line("      " + self._style(change, "green"))
         else:
             streak = self.streaks[self.goal_id]
-            self.line(f"      no improvement  (best {new_best:.2f}, {streak} in a row)")
+            self.line(f"      no improvement  ({section} best {new_best:.2f}, {streak} in a row)")
 
     def on_replan(self, update: dict[str, Any]) -> None:
         self.line("      " + self._style(f"REPLAN  {self.section}", "yellow"))

@@ -20,7 +20,7 @@ import signal
 import sys
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -60,9 +60,11 @@ def open_checkpointer(kind: str) -> Iterator[BaseCheckpointSaver]:
 
 
 def make_ports(config: RunConfig, fake: bool) -> Ports:
-    if not fake:
-        sys.exit("The real ports aren't wired up yet; only `run --fake` works for now.")
-    return fake_ports(agent=config.agent)
+    if fake:
+        return fake_ports(agent=config.agent)
+    from tokeneyezed.controller.wiring import real_ports
+
+    return real_ports(config)
 
 
 def _finished(feed: LiveFeed, state: dict, session_id: str) -> None:
@@ -70,27 +72,74 @@ def _finished(feed: LiveFeed, state: dict, session_id: str) -> None:
     feed.banner(f"{session_id} {reason.upper()} after {state['attempt_count']} attempts", "bold")
 
 
+def _tracked(feed: LiveFeed, session_id: str, record: bool):
+    """The feed, plus the session document's progress after every finished attempt."""
+    if not record:
+        return feed
+    from tokeneyezed.data import sessions
+
+    def on_update(node: str, update: dict) -> None:
+        feed(node, update)
+        if node in ("record_attempt", "record_flagged"):
+            sessions.record_progress(session_id, attempt_count=update["attempt_count"])
+
+    return on_update
+
+
+def _drive(feed, session_id, config_path, record, go) -> int:
+    """Run go(); record how it ended; on a kill, print how to resume."""
+    from tokeneyezed.data import sessions
+
+    try:
+        state = go()
+    except (KeyboardInterrupt, AttemptKilled):
+        feed.line()
+        feed.banner(f"KILLED during attempt #{feed.done + 1:03d}", "red")
+        feed.line(f"   resume: tokeneyezed resume {session_id} --config {config_path}")
+        if record:
+            sessions.end_session(
+                session_id, status=sessions.KILLED, reason="interrupted", attempt_count=feed.done
+            )
+        return 130
+    _finished(feed, state, session_id)
+    if record:
+        sessions.end_session(
+            session_id,
+            status=sessions.FINISHED,
+            reason=state.get("finished", "stopped"),
+            attempt_count=state["attempt_count"],
+        )
+    return 0
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     session_id = args.session_id or f"{config.name}-{datetime.now(UTC):%m%d-%H%M%S}"
     ctx = Context(ports=make_ports(config, args.fake), config=config)
     feed = LiveFeed(agent=config.agent)
+    record = not args.fake  # fakes live in one process; there is no session to record
+    if record:
+        from tokeneyezed.data import sessions
+
+        sessions.start_session(session_id, config=asdict(config), agent=config.agent)
     with open_checkpointer(args.checkpointer) as saver:
         feed.banner(
             f"STARTED {session_id}  run {config.name}  agent {config.agent}  "
             f"{len(config.sections)} goals  budget {config.max_attempts} attempts"
         )
-        try:
-            _finished(feed, start(build_graph(saver), ctx, session_id, feed), session_id)
-        except (KeyboardInterrupt, AttemptKilled):
-            feed.line()
-            feed.banner(f"KILLED during attempt #{feed.done + 1:03d}", "red")
-            feed.line(f"   resume: tokeneyezed resume {session_id} --config {args.config}")
-            return 130
-    return 0
+        on_update = _tracked(feed, session_id, record)
+        return _drive(
+            feed,
+            session_id,
+            args.config,
+            record,
+            lambda: start(build_graph(saver), ctx, session_id, on_update),
+        )
 
 
 def cmd_resume(args: argparse.Namespace) -> int:
+    from tokeneyezed.data import sessions
+
     config = load_config(args.config)
     if args.agent:
         config = replace(config, agent=args.agent)
@@ -101,17 +150,23 @@ def cmd_resume(args: argparse.Namespace) -> int:
         graph = build_graph(saver)
         if not graph.get_state({"configurable": {"thread_id": args.session_id}}).values:
             sys.exit(f"No checkpoint for session {args.session_id}")
-        state = resume(
-            graph,
-            ctx,
-            args.session_id,
+        sessions.resume_session(args.session_id, agent=config.agent)
+        on_update = _tracked(feed, args.session_id, record=True)
+        return _drive(
             feed,
-            lambda killed, restored, nxt: feed.resumed(
-                args.session_id, config.agent, killed, restored, nxt
+            args.session_id,
+            args.config,
+            True,
+            lambda: resume(
+                graph,
+                ctx,
+                args.session_id,
+                on_update,
+                lambda killed, restored, nxt: feed.resumed(
+                    args.session_id, config.agent, killed, restored, nxt
+                ),
             ),
         )
-        _finished(feed, state, args.session_id)
-    return 0
 
 
 def cmd_attempt(args: argparse.Namespace) -> int:
