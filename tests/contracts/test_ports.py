@@ -5,6 +5,7 @@ API key, wrap it in `pytest.param(..., marks=needs_env("MONGODB_URI"))` so it sk
 without credentials (and CI still runs the fakes).
 """
 
+import json
 import os
 import tempfile
 import uuid
@@ -119,6 +120,29 @@ def codex_runner_on_fake_binary():
 RUNNERS = [fakes.FakeRunner, claude_runner_on_fake_binary, codex_runner_on_fake_binary]
 
 
+def spec_scorer_on_tiny_workspace() -> SpecScorer:
+    """The real spec scorer over an echo renderer and a two-example split pair."""
+    workspace = Path(tempfile.mkdtemp())
+    hidden = Path(tempfile.mkdtemp())  # the harness-side splits stay outside the workspace (I1)
+    (workspace / "render.py").write_text("import sys\nsys.stdout.write(sys.stdin.read())\n")
+    passing = {"example": 1, "section": "Paragraphs", "markdown": "hi\n", "html": "hi\n"}
+    failing = {"example": 2, "section": "ATX headings", "markdown": "# t\n", "html": "<h1>t</h1>\n"}
+    val_only = {
+        "example": 3,
+        "section": "ATX headings",
+        "markdown": "# x\n",
+        "html": "<h1>x</h1>\n",
+    }
+    (hidden / "visible.json").write_text(json.dumps([passing, failing]))
+    # Like the real split, every section present anywhere is present in validation.
+    (hidden / "validation.json").write_text(json.dumps([passing, val_only]))
+    return SpecScorer(
+        workspace=workspace,
+        visible=hidden / "visible.json",
+        validation=hidden / "validation.json",
+    )
+
+
 def spec_scorer_on_fake_scorer():
     def fake(**kwargs):
         return {
@@ -135,7 +159,7 @@ def spec_scorer_on_fake_scorer():
     )
 
 
-SCORERS = [fakes.ScriptedScorer, spec_scorer_on_fake_scorer]
+SCORERS = [fakes.ScriptedScorer, spec_scorer_on_fake_scorer, spec_scorer_on_tiny_workspace]
 REVIEWERS = [fakes.FakeReviewer, GamingReviewer]
 
 

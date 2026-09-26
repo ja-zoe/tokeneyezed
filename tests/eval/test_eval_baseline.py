@@ -17,6 +17,7 @@ import os
 import stat
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -24,6 +25,7 @@ from mongo_fakes import FakeDB, embedder
 
 from tokeneyezed.controller.cli import main
 from tokeneyezed.controller.config import RunConfig, load_config
+from tokeneyezed.controller.runners.base import HARNESS_ROOT, IsolationError
 from tokeneyezed.eval.baseline import FEEDBACK, BaselinePaths, run_baseline
 
 # The fake agent: logs one JSON line per call, then "improves" render.py on its
@@ -208,6 +210,31 @@ def test_mongo_docs_open_and_close_with_agent_b(tmp_path, monkeypatch) -> None:
         assert mongo_doc["visible_pass"] == doc["visible_pass"]
         assert mongo_doc["per_section"] == doc["per_section"]
         assert mongo_doc["observer_flags"] == []  # B never sees the observer
+
+
+def test_paths_the_runner_would_refuse_are_refused(tmp_path, monkeypatch) -> None:
+    """run_baseline applies the approved runner's isolation rules instead of trusting callers.
+
+    A runs or config dir inside the workspace would let the agent edit its own
+    settings file or attempts log (I6); a nested splits dir leaks the hidden
+    splits (I1); a workspace overlapping the harness repo reaches our code (I2).
+    """
+    fake_claude(tmp_path, monkeypatch)
+    good = make_paths(tmp_path)
+    refused = [
+        (replace(good, runs_dir=good.workspace / "runs"), "I6"),
+        (replace(good, config_dir=good.workspace / ".claude"), "I6"),
+        (replace(good, splits_dir=good.workspace / "splits"), "I1"),
+        (replace(good, workspace=HARNESS_ROOT), "I2"),
+    ]
+    for paths, invariant in refused:
+        with pytest.raises(IsolationError, match=invariant):
+            run_baseline(CONFIG, paths, claude_bin="claude", session_id="B-bad")
+    not_a_repo = tmp_path / "not-a-repo"
+    not_a_repo.mkdir()
+    with pytest.raises(IsolationError, match="not a git repository"):
+        run_baseline(CONFIG, replace(good, workspace=not_a_repo), claude_bin="claude")
+    assert not (good.runs_dir / "B-bad").exists()  # refused before anything was written
 
 
 def test_cli_baseline_runs_the_loop_from_env_paths(tmp_path, monkeypatch) -> None:
