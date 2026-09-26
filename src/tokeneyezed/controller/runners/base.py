@@ -99,6 +99,10 @@ class HeadlessRunner:
     def prepare(self, attempt_dir: Path, attempt_id: str) -> None:
         """Write anything the agent needs before launch (e.g. a hook settings file)."""
 
+    def usage(self, transcript: Path) -> dict[str, int] | None:
+        """Token usage from the agent's transcript; None if this agent's format isn't parsed yet."""
+        return None
+
     def blocked_calls(self, transcript: Path, attempt_id: str) -> tuple[str, ...]:
         """Tool calls the observer's pre-gate blocked during this attempt."""
         return ()
@@ -199,6 +203,7 @@ class HeadlessRunner:
             diff_summary=diff_summary + ("\n(stopped at the timebox)" if timed_out else ""),
             exit_code=proc.returncode,
             blocked=self.blocked_calls(transcript, attempt_id),
+            usage=self.usage(transcript),
         )
 
     def _commit(self, attempt_id: str, intent: str, base: str) -> tuple[str, str]:

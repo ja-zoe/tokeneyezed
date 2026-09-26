@@ -31,6 +31,9 @@ class AttemptResult:
     diff_summary: str
     exit_code: int
     blocked: tuple[str, ...] = ()  # tool calls the observer's pre-gate blocked, with reasons
+    # Token usage the agent reported for the attempt (runners/usage.py): calls, peak_context,
+    # tokens_processed, input_tokens, cache_read_tokens, output_tokens. None = not reported.
+    usage: Mapping[str, int] | None = None
 
 
 @dataclass(frozen=True)

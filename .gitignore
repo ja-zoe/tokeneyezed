@@ -27,3 +27,10 @@ runs/
 tmp/
 .kiss-worktrees/
 reports/
+
+# Third-party reference repos (UI skeleton + design/copy guidance). Local only, never committed.
+.refs/
+node_modules/
+
+# Vercel
+.vercel/
