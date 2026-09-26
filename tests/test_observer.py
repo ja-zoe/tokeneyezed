@@ -220,6 +220,8 @@ def test_codex_adapter_can_block_before_call(tmp_path):
         "TOKENEYEZED_SESSION_ID": "harness-session",
         "TOKENEYEZED_ATTEMPT_ID": "attempt-1",
         "TOKENEYEZED_AGENT": "codex",
+        "TOKENEYEZED_OBSERVER_URL": "http://127.0.0.1:8765/event",
+        "TOKENEYEZED_OBSERVER_TOKEN": "secret",
     }
 
     code, stdout, stderr = handle(payload, env, lambda event, *_: PreGate(tmp_path).check(event))
