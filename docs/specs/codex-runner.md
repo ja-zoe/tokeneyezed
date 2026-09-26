@@ -44,13 +44,13 @@ codex exec --json --ephemeral --skip-git-repo-check --cd <workspace>
 
 - `runner_for(agent, config)` picks the runner by agent name; `tokeneyezed attempt --agent codex` runs one Codex attempt; `resume --agent codex` uses it once the real ports are wired.
 
-### Needs Dharshan (observer shim, not in this branch)
+### Observer shim adapter (Dharshan)
 
-The shim is Claude-shaped today: it hardcodes `agent: "claude"` and maps unknown tools to `other`. For Codex it needs `TOKENEYEZED_AGENT` for the agent field and `apply_patch` mapped to `edit`/`write`, with target paths read from the patch headers so the tampering check sees them. Until then, Codex honeypot commands are blocked (they arrive as `Bash`), but **Codex edits to protected files are not checked**.
+Implemented in the observer adapter: `TOKENEYEZED_AGENT=codex` records the correct agent, and Codex's `apply_patch` command is normalized as an edit so patch targets and added source lines go through the same protected-path and forbidden-import checks as Claude edits. Unit and service-round-trip tests cover a protected patch being denied and a task-workspace patch being allowed. Repeat the live admission test with a protected-file patch before claiming live tamper protection.
 
 ### Out of scope
 
-The shim's Codex adapter (Dharshan), and the heartbeat.
+The heartbeat.
 
 ## Tests (the merge gate)
 

@@ -21,7 +21,7 @@ Every command we should be able to run, who owns it, and whether it exists yet. 
 | Command | What it does | Status |
 |---|---|---|
 | `python -m tokeneyezed.observer.service --workspace W --audit-log L --protect P [--port 8765]` | Start the observer service the hook shim talks to. Needs `TOKENEYEZED_OBSERVER_TOKEN`. Proposed alias: `tokeneyezed observe`. | ✅ (alias 📋) |
-| `tokeneyezed replay --session B-...` | Run a recorded session's events through the observer and count what it would have caught (the observer eval). | 📋 |
+| `tokeneyezed replay --session B-... --events runs/B/events.jsonl --workspace /absolute/task-repo [--protect /absolute/scorer]` | Replay neutral observer-event JSONL through the deterministic pre-gate and count what it would have caught. Read-only; evaluates pre-tool events only. | 🔨 reader implemented; baseline capture needs Gunjan |
 | `tokeneyezed rules learn` | Cluster flags into candidate rules and replay-test them (S1; first thing cut if behind). | 📋 |
 
 ## Data (Aaron)
