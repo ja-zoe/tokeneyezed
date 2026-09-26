@@ -10,6 +10,7 @@ import os
 import pytest
 
 from tokeneyezed.controller import fakes
+from tokeneyezed.observer.reviewer import GamingReviewer
 from tokeneyezed.ports import (
     AttemptResult,
     AttemptRunner,
@@ -35,7 +36,7 @@ BRIEF_BUILDERS = [fakes.FakeBriefBuilder]
 PLANNERS = [fakes.FakePlanner]
 RUNNERS = [fakes.FakeRunner]
 SCORERS = [fakes.ScriptedScorer]
-REVIEWERS = [fakes.FakeReviewer]
+REVIEWERS = [fakes.FakeReviewer, GamingReviewer]
 LEDGERS = [fakes.InMemoryLedger]
 COMPACTORS = [fakes.FakeCompactor]
 
