@@ -47,7 +47,8 @@ INDEXES: dict[str, dict[str, tuple[str, dict[str, Any]]]] = {
         ),
     },
     "memory": {"memory_vector": ("vectorSearch", _vector(["session_id"]))},
-    "skills": {"skills_vector": ("vectorSearch", _vector([]))},
+    # Skills are per session (data/skills.py), so the brief filters on session_id.
+    "skills": {"skills_vector": ("vectorSearch", _vector(["session_id"]))},
     # The observer's repeat-failure check and rule learner search observer flags by `check`.
     "interventions": {"interventions_vector": ("vectorSearch", _vector(["check"]))},
 }

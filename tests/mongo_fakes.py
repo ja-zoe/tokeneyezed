@@ -41,7 +41,7 @@ class FakeCollection:
                         return False
                     if "$nin" in value and doc.get(key) in value["$nin"]:
                         return False
-                elif doc.get(key) != value:
+                elif _get(doc, key) != value:
                     return False
             return True
 
@@ -64,6 +64,9 @@ class FakeCollection:
             doc.update(update.get("$set", {}))
             for key, by in update.get("$inc", {}).items():
                 doc[key] = doc.get(key, 0) + by
+            for key, spec in update.get("$addToSet", {}).items():
+                items = spec["$each"] if isinstance(spec, dict) and "$each" in spec else [spec]
+                doc[key] = doc.get(key, []) + [i for i in items if i not in doc.get(key, [])]
             for key in update.get("$unset", {}):
                 doc.pop(key, None)
             return SimpleNamespace(matched_count=1, modified_count=1, upserted_id=None)
@@ -74,6 +77,18 @@ class FakeCollection:
             inserted = self.insert_one(doc).inserted_id
             return SimpleNamespace(matched_count=0, modified_count=0, upserted_id=inserted)
         return SimpleNamespace(matched_count=0, modified_count=0, upserted_id=None)
+
+
+def _update_many(self, query: dict[str, Any], update: dict[str, Any]):
+    docs = list(self.find(query))
+    for doc in docs:
+        doc.update(update.get("$set", {}))
+        for key, by in update.get("$inc", {}).items():
+            doc[key] = doc.get(key, 0) + by
+    return SimpleNamespace(matched_count=len(docs), modified_count=len(docs))
+
+
+FakeCollection.update_many = _update_many
 
 
 def _get(doc: dict[str, Any], dotted: str) -> Any:

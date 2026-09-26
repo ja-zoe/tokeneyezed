@@ -159,9 +159,13 @@ def test_cli_db_backfill(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         commands, "backfill_embeddings", lambda limit: seen.setdefault("n", limit) or 3
     )
+    monkeypatch.setattr(commands, "backfill_memory_embeddings", lambda limit: 2)
+    monkeypatch.setattr(commands, "backfill_skill_embeddings", lambda limit: 1)
     assert main(["db", "backfill", "--limit", "7"]) == 0
     assert seen["n"] == 7
-    assert "embedded 7 attempts" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "embedded 7 attempts" in out
+    assert "embedded 2 memory summaries" in out and "embedded 1 skills" in out
 
 
 def test_cli_eval_retrieval_passes_its_arguments_through(monkeypatch) -> None:
@@ -179,3 +183,45 @@ def test_cli_eval_retrieval_passes_its_arguments_through(monkeypatch) -> None:
         "--example",
         "a-1",
     ]
+
+
+class ConflictingColl(FakeColl):
+    """Like the live `sessions` collection: a non-unique session_id index already exists."""
+
+    def create_index(self, keys, **options):
+        if keys == [("session_id", 1)] and options.get("unique"):
+            raise OperationFailure("An existing index has the same name", code=86)
+        return super().create_index(keys, **options)
+
+
+def test_init_reports_a_conflicting_index_and_still_does_the_rest() -> None:
+    db = FakeDb()
+    db["sessions"] = ConflictingColl()
+    lines = init_database(db)
+    conflicts = [line for line in lines if line.startswith("CONFLICT")]
+    assert len(conflicts) == 1 and "sessions" in conflicts[0] and "drop it" in conflicts[0]
+    # everything after the conflict still ran: the other regular and all search indexes
+    assert db["attempts"].regular and db["goals"].regular
+    assert {n for idx in INDEXES.values() for n in idx} <= {
+        line.split()[1] for line in lines if line.startswith("search")
+    }
+
+
+def test_init_does_not_swallow_other_index_errors() -> None:
+    class Broken(FakeColl):
+        def create_index(self, keys, **options):
+            raise OperationFailure("not authorized", code=13)
+
+    db = FakeDb()
+    db["sessions"] = Broken()
+    with pytest.raises(OperationFailure):
+        init_database(db)
+
+
+def test_cli_db_init_exits_nonzero_on_a_conflict(monkeypatch, capsys) -> None:
+    db = ready_db()
+    db["sessions"] = ConflictingColl()
+    monkeypatch.setattr(commands, "get_db", lambda: db)
+    assert main(["db", "init"]) == 1
+    captured = capsys.readouterr()
+    assert "CONFLICT" in captured.out and "not applied" in captured.err

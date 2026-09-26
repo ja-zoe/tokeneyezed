@@ -7,8 +7,9 @@ session_id and goal_id.
 
 Bounded: every section has a fixed item count and every item a fixed character cap, so the brief
 stays roughly the same size however long the ledger grows. Flagged attempts never appear
-(invariant I8). With use_memory=False (the H-mem run) the brief skips ledger retrieval and memory
-summaries.
+(invariant I8). With use_memory=False (the H-mem run) the brief skips ledger retrieval, memory
+summaries, and skills (skills are distilled memory). Skills are searched within the session only,
+so concurrent runs never see each other's.
 
 Nothing here blocks the loop: if the query embedding fails, the brief falls back to keyword search
 for failed attempts and leaves out memory and skills.
@@ -154,8 +155,8 @@ def build_brief(
         )
         if query_vector is not None:
             brief.memories = list(db["memory"].aggregate(memory_pipeline(session_id, query_vector)))
-    if query_vector is not None:
-        brief.skills = list(db["skills"].aggregate(skills_pipeline(query_vector)))
+            brief.skills = list(db["skills"].aggregate(skills_pipeline(session_id, query_vector)))
+            _record_skill_uses(db, goal_id, brief.skills)
     brief.rules = list(
         db["rules"]
         .find({"status": "active"}, {"_id": 0, "pattern": 1, "check_type": 1, "version": 1})
@@ -238,8 +239,8 @@ def memory_pipeline(session_id: str, query_vector: list[float]) -> list[dict[str
     ]
 
 
-def skills_pipeline(query_vector: list[float]) -> list[dict[str, Any]]:
-    """Skills are reusable across sessions, so this search is not scoped."""
+def skills_pipeline(session_id: str, query_vector: list[float]) -> list[dict[str, Any]]:
+    """Skills distilled earlier in this session (data/skills.py); never another run's."""
     return [
         {
             "$vectorSearch": {
@@ -248,10 +249,21 @@ def skills_pipeline(query_vector: list[float]) -> list[dict[str, Any]]:
                 "queryVector": query_vector,
                 "numCandidates": NUM_CANDIDATES,
                 "limit": K_SKILLS,
+                "filter": {"session_id": session_id},
             }
         },
-        {"$project": {"_id": 0, "description": 1, "uses": 1, "successes": 1}},
+        {"$project": {"_id": 1, "description": 1, "uses": 1, "successes": 1}},
     ]
+
+
+def _record_skill_uses(db: Database, goal_id: str, skills: list[dict[str, Any]]) -> None:
+    """Count each shown skill as used, and remember it on the goal so completing the goal can
+    credit it with a success (data/skills.py record_skill_outcomes)."""
+    ids = [s["_id"] for s in skills if "_id" in s]
+    if not ids:
+        return
+    db["skills"].update_many({"_id": {"$in": ids}}, {"$inc": {"uses": 1}})
+    db["goals"].update_one({"goal_id": goal_id}, {"$addToSet": {"skills_shown": {"$each": ids}}})
 
 
 def _clip(text: str, limit: int) -> str:
@@ -276,7 +288,8 @@ def _attempt_line(a: dict[str, Any]) -> str:
 
 def _skill_line(s: dict[str, Any]) -> str:
     uses, successes = s.get("uses") or 0, s.get("successes") or 0
-    return _clip(f"{s.get('description', '')} ({successes}/{uses} successful uses)", MAX_ITEM_CHARS)
+    # Counts first: a long description is clipped at the end, and the counts must survive.
+    return _clip(f"({successes}/{uses} successful uses) {s.get('description', '')}", MAX_ITEM_CHARS)
 
 
 def _rule_line(r: dict[str, Any]) -> str:
