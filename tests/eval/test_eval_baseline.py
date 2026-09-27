@@ -263,3 +263,39 @@ def test_cli_baseline_without_task_text_says_init_workspace(tmp_path, monkeypatc
     monkeypatch.setenv("TOKENEYEZED_SPLITS_DIR", str(paths.splits_dir))
     with pytest.raises(SystemExit, match="workspace init"):
         main(["baseline", "--config", "configs/b.toml"])
+
+
+class _Interrupted(BaseException):
+    """Stands in for Ctrl-C / SIGTERM (a real KeyboardInterrupt would abort pytest itself)."""
+
+
+def test_interrupting_the_baseline_stops_its_agent(tmp_path, monkeypatch) -> None:
+    """Interrupting the baseline used to leave the agent (its own session) running and billing."""
+    import time
+
+    from tokeneyezed.eval.baseline import run_attempt
+
+    pidfile = tmp_path / "agent.pid"
+    code = f"import os, time; open({str(pidfile)!r}, 'w').write(str(os.getpid())); time.sleep(120)"
+    real_wait = subprocess.Popen.wait
+
+    def interrupted_wait(self, timeout=None):
+        if timeout == 30:  # the attempt's own wait, where the operator's Ctrl-C lands
+            while not pidfile.exists():
+                time.sleep(0.05)
+            raise _Interrupted
+        return real_wait(self, timeout=timeout)
+
+    monkeypatch.setattr(subprocess.Popen, "wait", interrupted_wait)
+    with pytest.raises(_Interrupted):
+        run_attempt(
+            [sys.executable, "-c", code],
+            tmp_path,
+            dict(os.environ),
+            tmp_path / "t.jsonl",
+            tmp_path / "e.log",
+            30,
+        )
+    pid = int(pidfile.read_text())
+    state = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True)
+    assert not state.stdout.strip() or state.stdout.strip().startswith("Z"), "agent still running"

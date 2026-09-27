@@ -92,8 +92,8 @@ def main():
     active_rules = ()
     if args.mongo:
         from tokeneyezed.data.rules import load_active_rules
+
         from .storage import MongoEventWriter
-        
 
         if not os.environ.get("MONGODB_URI"):
             parser.error("--mongo requires MONGODB_URI in the service environment")

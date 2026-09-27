@@ -113,7 +113,9 @@ def run_attempt(
     """One timeboxed agent run; returns (exit_code, timed_out).
 
     SIGTERM goes to the agent's whole process group at the timebox, SIGKILL after
-    GRACE_SECONDS — the same stop the shared runner base uses.
+    GRACE_SECONDS — the same stop the shared runner base uses. The same stop runs if the
+    baseline itself is interrupted (Ctrl-C, SIGTERM): the agent is in its own session, so
+    without it the agent kept working, and billing, after the run was stopped.
     """
     with transcript.open("w") as out, stderr.open("w") as err:
         proc = subprocess.Popen(
@@ -130,15 +132,25 @@ def run_attempt(
             return proc.returncode, False
         except subprocess.TimeoutExpired:
             pass
-        try:
-            os.killpg(proc.pid, signal.SIGTERM)
-            proc.wait(timeout=GRACE_SECONDS)
-        except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGKILL)
-            proc.wait()
-        except ProcessLookupError:
-            pass
+        except BaseException:
+            _stop_group(proc)
+            raise
+        _stop_group(proc)
         return proc.returncode, True
+
+
+def _stop_group(proc: subprocess.Popen) -> None:
+    """SIGTERM the agent's whole process group, then SIGKILL if it lingers."""
+    if proc.poll() is not None:
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+        proc.wait(timeout=GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait()
+    except ProcessLookupError:
+        pass
 
 
 def run_baseline(
