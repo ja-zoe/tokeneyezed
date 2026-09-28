@@ -24,6 +24,14 @@ GIT_IDENTITY = ["-c", "user.name=tokeneyezed", "-c", "user.email=harness@tokeney
 # The operator's own agent and harness variables never reach the agent (e.g. when the harness is
 # launched from a Claude Code or Codex session); each runner sets exactly the ones it needs.
 STRIPPED_ENV_PREFIXES = ("CLAUDE", "CODEX_", "TOKENEYEZED_")
+# The harness's own secrets, which the CLI loads from .env. The agent runs a shell, so anything
+# here is readable by it: MONGODB_URI alone would let it query Atlas, held-out scores included
+# (I1, I3). A runner that needs one for the agent process itself adds it back explicitly.
+STRIPPED_ENV_NAMES = frozenset({"MONGODB_URI", "VOYAGE_API_KEY", "OPENROUTER_API_KEY"})
+
+
+class ShimUnavailable(RuntimeError):
+    """The observer's hook shim can't start from the workspace, so hooks would fail open."""
 
 
 class IsolationError(ValueError):
@@ -132,7 +140,11 @@ class HeadlessRunner:
     # -- one attempt ------------------------------------------------------------------------
 
     def environment(self, session_id: str, attempt_id: str, intent: str, spool: Path) -> dict:
-        env = {k: v for k, v in os.environ.items() if not k.startswith(STRIPPED_ENV_PREFIXES)}
+        env = {
+            k: v
+            for k, v in os.environ.items()
+            if not k.startswith(STRIPPED_ENV_PREFIXES) and k not in STRIPPED_ENV_NAMES
+        }
         env.update(
             {
                 self.config_env: str(self.paths.config_dir),
@@ -177,12 +189,14 @@ class HeadlessRunner:
         spool = attempt_dir / f"{attempt_id}.spool.jsonl"
         prompt = f"{brief}\n\nYour intent for this attempt: {intent}"
         base = self._git("rev-parse", "HEAD")
+        env = self.environment(session_id, attempt_id, intent, spool)
+        self.check_shim(env)
 
         with transcript.open("w") as out, (attempt_dir / f"{attempt_id}.stderr").open("w") as err:
             proc = subprocess.Popen(
                 self.command(prompt, attempt_dir, attempt_id),
                 cwd=self.paths.workspace,
-                env=self.environment(session_id, attempt_id, intent, spool),
+                env=env,
                 stdin=subprocess.DEVNULL,
                 stdout=out,
                 stderr=err,
@@ -205,6 +219,29 @@ class HeadlessRunner:
             blocked=self.blocked_calls(transcript, attempt_id),
             usage=self.usage(transcript),
         )
+
+    def check_shim(self, env: dict) -> None:
+        """Refuse to launch the agent unless the hook shim imports exactly as the hook runs it.
+
+        Claude Code and Codex both treat a hook that crashes (any exit code but 2) as "allow", so a
+        shim that can't even start would silently turn the observer's pre-gate off. Same
+        interpreter, working directory, and environment as the hook command.
+        """
+        done = subprocess.run(
+            [self.python, "-c", "import tokeneyezed.observer.shim"],
+            cwd=self.paths.workspace,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if done.returncode != 0:
+            detail = (done.stderr.strip().splitlines() or ["no output"])[-1]
+            raise ShimUnavailable(
+                f"the observer shim can't start from the workspace ({detail}); the agent's hooks "
+                "would fail open, so the attempt was not started. Install the harness package "
+                "(`uv sync`) or use an absolute PYTHONPATH."
+            )
 
     def _commit(self, attempt_id: str, intent: str, base: str) -> tuple[str, str]:
         self._git("add", "-A")
