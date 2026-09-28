@@ -8,7 +8,7 @@ Every real check must prove it can see a violation (for example, a scanner test 
 
 | ID | Invariant | Owner | Status |
 |---|---|---|---|
-| I1 | The validation and held-out splits are unreachable from the task workspace: not inside it, not linked from it, and no split file exists anywhere under it. | Gunjan | skipped: needs split + workspace config |
+| I1 | The validation and held-out splits are unreachable from the task workspace: not inside it, not linked from it, and no split file exists anywhere under it. | Gunjan | **enforced for baseline paths** (including planted workspace symlinks) |
 | I2 | The task workspace lives outside this repo, so attempt agents never load our `AGENTS.md`/`CLAUDE.md`, skills, scorer, or hidden splits. | Julian | **enforced** (the Claude runner refuses to start otherwise) |
 | I3 | The harness never reads `test_evals`. The name appears in no source file outside `src/tokeneyezed/eval/`, which owns that collection (writer and indexes). | Gunjan | **enforced** |
 | I4 | The pre-gate blocks honeypot shortcuts before they run: installing or importing `markdown-it-py`, `mistune`, or `commonmark`, and copying from `site-packages`. | Dharshan | unit-enforced for recognized commands and source edits/writes; live hook admission pending |

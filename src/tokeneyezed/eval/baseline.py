@@ -102,6 +102,20 @@ def check_paths(paths: BaselinePaths) -> BaselinePaths:
         raise IsolationError(
             f"splits dir {hidden} is reachable from the workspace {p.workspace} (I1)"
         )
+
+    def fail_walk(error: OSError) -> None:
+        raise error
+
+    for root, directories, files in os.walk(p.workspace, followlinks=False, onerror=fail_walk):
+        for name in (*directories, *files):
+            candidate = Path(root) / name
+            if not candidate.is_symlink():
+                continue
+            target = candidate.resolve()
+            if target.is_relative_to(hidden) or hidden.is_relative_to(target):
+                raise IsolationError(
+                    f"splits dir {hidden} is reachable through workspace symlink {candidate} (I1)"
+                )
     return BaselinePaths(p.workspace, hidden, p.runs_dir, p.config_dir)
 
 
