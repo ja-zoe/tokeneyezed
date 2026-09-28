@@ -97,6 +97,15 @@ def main():
 
         if not os.environ.get("MONGODB_URI"):
             parser.error("--mongo requires MONGODB_URI in the service environment")
+        from tokeneyezed.data.db import get_db
+
+        # Connect before serving. A cold Atlas connection can take several seconds to find the
+        # primary, longer than each event's 2-second storage deadline, so without this the first
+        # events fail closed and every pre-tool call is blocked. Warm writes take well under 1s.
+        try:
+            get_db().command("ping")
+        except Exception as err:
+            parser.error(f"--mongo could not reach MongoDB: {err}")
         writer = MongoEventWriter()
         active_rules = load_active_rules()
 
