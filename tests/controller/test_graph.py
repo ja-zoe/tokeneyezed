@@ -117,6 +117,41 @@ def test_kill_then_resume_on_another_agent_continues_without_repeating():
     assert codex_runner.resets == [closed[1]["commit"]]  # reset to the last clean commit
 
 
+def test_resume_retries_record_without_killing_completed_attempt():
+    config = replace(BASE, max_attempts=1)
+    claude = fake_ports(reviewer=FakeReviewer(flag_calls=frozenset({1})))
+    original_close = claude.ledger.close_attempt
+    failed = False
+
+    def fail_once(**kwargs):
+        nonlocal failed
+        if not failed:
+            failed = True
+            raise ConnectionError("Atlas write timed out")
+        return original_close(**kwargs)
+
+    claude.ledger.close_attempt = fail_once
+    graph = build_graph(InMemorySaver())
+    with pytest.raises(ConnectionError):
+        start(graph, Context(ports=claude, config=config), "s1")
+
+    attempt = next(iter(claude.ledger.attempts.values()))
+    assert attempt["status"] == "running"
+    codex_runner = FakeRunner(agent="codex")
+    codex = fake_ports(
+        agent="codex",
+        goals=claude.goals,
+        ledger=claude.ledger,
+        runner=codex_runner,
+        reviewer=claude.reviewer,
+    )
+    state = resume(graph, Context(ports=codex, config=config), "s1")
+
+    assert state["attempt_count"] == 1
+    assert attempt["status"] == "closed" and attempt["outcome"] == "flagged"
+    assert codex_runner.calls == 0 and codex_runner.resets == []
+
+
 def test_memory_flag_reaches_the_brief_builder():
     ports = fake_ports()
     run(ports, replace(BASE, memory=False))

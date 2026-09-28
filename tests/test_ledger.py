@@ -10,6 +10,7 @@ from tokeneyezed.data.writes import (
     last_clean_commit,
     mark_running_as_killed,
     open_attempt,
+    restore_killed_attempt,
 )
 
 OPEN = dict(
@@ -104,6 +105,18 @@ def test_a_killed_attempt_cannot_be_closed_later() -> None:
     with pytest.raises(LookupError):
         close_attempt(db=db, embedder=embedder(), **CLOSE)
     assert db["attempts"].docs[0]["status"] == "killed"
+
+
+def test_restore_killed_attempt_for_checkpoint_recovery() -> None:
+    db = FakeDB()
+    opened(db)
+    mark_running_as_killed("H-0926", db=db)
+    assert restore_killed_attempt("a-001", db=db)
+    assert not restore_killed_attempt("a-001", db=db)
+    doc = db["attempts"].docs[0]
+    assert doc["status"] == "running" and "outcome" not in doc and "closed_at" not in doc
+    close_attempt(db=db, embedder=embedder(), **CLOSE)
+    assert doc["status"] == "closed"
 
 
 def test_mark_running_as_killed_is_scoped_and_idempotent() -> None:
