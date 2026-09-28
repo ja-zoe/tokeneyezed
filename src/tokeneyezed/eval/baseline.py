@@ -42,6 +42,9 @@ from tokeneyezed.controller.runners.base import (
     GIT_IDENTITY,
     GRACE_SECONDS,
     STRIPPED_ENV_PREFIXES,
+    IsolationError,
+    RunnerPaths,
+    check_isolation,
 )
 from tokeneyezed.controller.runners.claude import AGENT_TOOLS
 from tokeneyezed.data import sessions, writes
@@ -76,12 +79,44 @@ def baseline_command(
 
 @dataclass(frozen=True)
 class BaselinePaths:
-    """Where one baseline session reads and writes (all validated by the caller)."""
+    """Where one baseline session reads and writes (validated by check_paths)."""
 
     workspace: Path  # the task repo the agent works in (a git repo with the task text)
     splits_dir: Path  # harness-side splits: visible.json + validation.json, outside the workspace
     runs_dir: Path  # transcripts, settings, attempts.jsonl under runs_dir/<session_id>/
     config_dir: Path  # the agent's dedicated CLAUDE_CONFIG_DIR
+
+
+def check_paths(paths: BaselinePaths) -> BaselinePaths:
+    """The approved runner's isolation rules for a baseline session; returns resolved paths.
+
+    check_isolation covers I2 (workspace never overlaps the harness repo) and I6
+    (runs/config dirs are outside the workspace, where the agent could edit the
+    settings file or the attempts log); the splits check is I1 — the hidden
+    splits must not be reachable from the workspace, and a workspace inside the
+    splits dir would land in the agent's git repo.
+    """
+    p = check_isolation(RunnerPaths(paths.workspace, paths.runs_dir, paths.config_dir))
+    hidden = paths.splits_dir.expanduser().resolve()
+    if hidden.is_relative_to(p.workspace) or p.workspace.is_relative_to(hidden):
+        raise IsolationError(
+            f"splits dir {hidden} is reachable from the workspace {p.workspace} (I1)"
+        )
+
+    def fail_walk(error: OSError) -> None:
+        raise error
+
+    for root, directories, files in os.walk(p.workspace, followlinks=False, onerror=fail_walk):
+        for name in (*directories, *files):
+            candidate = Path(root) / name
+            if not candidate.is_symlink():
+                continue
+            target = candidate.resolve()
+            if target.is_relative_to(hidden) or hidden.is_relative_to(target):
+                raise IsolationError(
+                    f"splits dir {hidden} is reachable through workspace symlink {candidate} (I1)"
+                )
+    return BaselinePaths(p.workspace, hidden, p.runs_dir, p.config_dir)
 
 
 def _git(workspace: Path, *args: str) -> str:
@@ -168,8 +203,10 @@ def run_baseline(
     `db` is Aaron's Mongo database: pass one to force it, or leave it None to use
     MONGODB_URI when set and skip Mongo entirely otherwise. `timebox_seconds`
     exists for tests and smoke runs only — a real run must take the config's
-    timebox_minutes so B, H, and H-mem stay comparable (I7).
+    timebox_minutes so B, H, and H-mem stay comparable (I7). Raises
+    IsolationError for paths the approved runner would refuse (check_paths).
     """
+    paths = check_paths(paths)
     session_id = session_id or f"{config.name}-{time.strftime('%Y%m%d-%H%M%S')}"
     session_dir = paths.runs_dir / session_id
     session_dir.mkdir(parents=True, exist_ok=True)

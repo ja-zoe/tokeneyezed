@@ -9,6 +9,7 @@ import pytest
 
 from tokeneyezed.controller.config import load_config
 from tokeneyezed.controller.runners.claude import IsolationError, RunnerPaths, check_isolation
+from tokeneyezed.eval.baseline import BaselinePaths, check_paths
 from tokeneyezed.observer.core import PreGate
 from tokeneyezed.observer.shim import handle, to_event
 
@@ -43,8 +44,19 @@ def test_i3_harness_never_reads_test_evals() -> None:
     assert not offenders, f"test_evals referenced outside {TEST_EVALS_OWNER}: {offenders}"
 
 
-def test_i1_hidden_splits_unreachable_from_task_workspace() -> None:
-    pytest.skip("I1 not built yet (owner: Gunjan): needs split + workspace config")
+def test_i1_hidden_splits_unreachable_from_task_workspace(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    (workspace / ".git").mkdir(parents=True)
+    splits = tmp_path / "splits"
+    splits.mkdir()
+    (splits / "validation.json").write_text("[]", encoding="utf-8")
+    paths = BaselinePaths(workspace, splits, tmp_path / "runs", tmp_path / "cfg")
+
+    # A correctly separated workspace is accepted; a planted link into the hidden split is refused.
+    check_paths(paths)
+    (workspace / "validation-link").symlink_to(splits / "validation.json")
+    with pytest.raises(IsolationError, match="I1"):
+        check_paths(paths)
 
 
 def test_i2_task_workspace_outside_repo(tmp_path: Path) -> None:
