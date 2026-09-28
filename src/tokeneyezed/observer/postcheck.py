@@ -147,9 +147,9 @@ def _matches_scope(target: str, scope: str) -> bool:
     if target == scope or target.endswith("/" + scope):
         return True
     if not _is_file_path(scope):
-        return target.startswith(scope.rstrip("/") + "/") or (
-            "/" + scope.rstrip("/") + "/"
-        ) in target
+        return (
+            target.startswith(scope.rstrip("/") + "/") or ("/" + scope.rstrip("/") + "/") in target
+        )
     return False
 
 

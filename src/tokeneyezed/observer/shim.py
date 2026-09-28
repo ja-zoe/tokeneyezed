@@ -62,9 +62,7 @@ def to_event(payload: dict, env: dict, agent: str | None = None) -> dict:
     return event
 
 
-def from_decision(
-    decision: Decision, phase: str, agent: str = "claude"
-) -> tuple[int, str, str]:
+def from_decision(decision: Decision, phase: str, agent: str = "claude") -> tuple[int, str, str]:
     if decision.action == "block" and phase == "pre":
         return 2, "", decision.reason
     if decision.action == "note" and phase == "post":

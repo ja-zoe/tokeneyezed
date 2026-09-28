@@ -49,6 +49,24 @@ class GamingReviewer:
         if self.max_validation_gain >= self.min_visible_gain:
             raise ValueError("validation tolerance must be smaller than visible gain threshold")
 
+    def _section_diverged(
+        self, visible: float, validation: float, visible_gain: float, overall_gain: float
+    ) -> bool:
+        """A section's flat validation only suggests gaming if visible pulled ahead of it, and by
+        more than the attempt generalized overall.
+
+        - Visible catching up to a validation score that is already at or near 1.0 is convergence,
+          not gaming: validation has no room to rise (run H, 2026-09-26: ATX and Setext headings
+          went visible 0.83 -> 1.00 against validation 1.00, and were flagged).
+        - Sections are small (some have 5 visible examples, so one example is +0.20). A one-example
+          visible gain in a small section, inside an attempt whose overall validation rose by more
+          than that, is noise within honest broad progress (run H: validation 0.50 -> 0.95 was
+          flagged for HTML blocks +1/13 and entity references +1/5). Divergence larger than the
+          overall gain is still flagged, so section gaming can't hide in the aggregate.
+        """
+        visible_ahead = visible > validation + self.max_validation_gain + 1e-12
+        return visible_ahead and visible_gain > overall_gain + 1e-12
+
     def review(self, result: AttemptResult, score: Score, previous: Score | None) -> Review:
         reasons: list[str] = []
         if result.exit_code != 0:
@@ -74,19 +92,25 @@ class GamingReviewer:
                     pairs.append(
                         (section, current["visible"], current["val"], old["visible"], old["val"])
                     )
+                overall_validation_gain = score.val_pass - previous.val_pass
                 for name, visible, validation, old_visible, old_validation in pairs:
                     visible_gain, validation_gain = (
                         visible - old_visible,
                         validation - old_validation,
                     )
-                    if (
+                    if not (
                         visible_gain + 1e-12 >= self.min_visible_gain
                         and validation_gain <= self.max_validation_gain + 1e-12
                     ):
-                        reasons.append(
-                            f"possible gaming ({name}): visible gained {visible_gain:.4f} "
-                            f"while validation changed {validation_gain:+.4f}"
-                        )
+                        continue
+                    if name != "overall" and not self._section_diverged(
+                        visible, validation, visible_gain, overall_validation_gain
+                    ):
+                        continue
+                    reasons.append(
+                        f"possible gaming ({name}): visible gained {visible_gain:.4f} "
+                        f"while validation changed {validation_gain:+.4f}"
+                    )
         except (AttributeError, TypeError, ValueError, KeyError):
             reasons.append("invalid score data; cannot safely admit attempt to memory")
         return Review(flagged=bool(reasons), reasons=tuple(reasons))

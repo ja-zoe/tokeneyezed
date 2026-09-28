@@ -38,9 +38,7 @@ def load_active_rules(*, db: Database | None = None) -> list[dict[str, Any]]:
     return list(database["rules"].find({"status": "active"}))
 
 
-def store_learned_rules(
-    rules: Iterable[dict[str, Any]], *, db: Database | None = None
-) -> int:
+def store_learned_rules(rules: Iterable[dict[str, Any]], *, db: Database | None = None) -> int:
     """Upsert rule results by stable pattern identity; return the number processed."""
     database = db if db is not None else get_db()
     collection = database["rules"]
